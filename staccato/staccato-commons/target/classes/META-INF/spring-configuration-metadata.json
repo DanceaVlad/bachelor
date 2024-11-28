@@ -1,0 +1,110 @@
+{
+  "groups": [
+    {
+      "name": "staccato",
+      "type": "com.planet.staccato.config.StacConfigProps",
+      "sourceType": "com.planet.staccato.config.StacConfigProps"
+    },
+    {
+      "name": "staccato.links",
+      "type": "com.planet.staccato.config.LinksConfigProps",
+      "sourceType": "com.planet.staccato.config.LinksConfigProps"
+    },
+    {
+      "name": "staccato.links.self",
+      "type": "com.planet.staccato.config.LinksConfigProps$Self",
+      "sourceType": "com.planet.staccato.config.LinksConfigProps",
+      "sourceMethod": "getSelf()"
+    },
+    {
+      "name": "staccato.links.thumbnails",
+      "type": "com.planet.staccato.config.LinksConfigProps$Thumbnails",
+      "sourceType": "com.planet.staccato.config.LinksConfigProps",
+      "sourceMethod": "getThumbnails()"
+    }
+  ],
+  "properties": [
+    {
+      "name": "staccato.generate-self-links",
+      "type": "java.lang.Boolean",
+      "sourceType": "com.planet.staccato.config.StacConfigProps",
+      "defaultValue": true
+    },
+    {
+      "name": "staccato.generate-thumbnail-links",
+      "type": "java.lang.Boolean",
+      "sourceType": "com.planet.staccato.config.StacConfigProps",
+      "defaultValue": true
+    },
+    {
+      "name": "staccato.include-null-fields",
+      "type": "java.lang.Boolean",
+      "sourceType": "com.planet.staccato.config.StacConfigProps",
+      "defaultValue": false
+    },
+    {
+      "name": "staccato.links.l-i-n-k-b-a-s-e",
+      "type": "java.lang.String",
+      "sourceType": "com.planet.staccato.config.LinksConfigProps"
+    },
+    {
+      "name": "staccato.links.l-i-n-k-p-r-e-f-i-x",
+      "type": "java.lang.String",
+      "sourceType": "com.planet.staccato.config.LinksConfigProps"
+    },
+    {
+      "name": "staccato.links.self.context-path",
+      "type": "java.lang.String",
+      "sourceType": "com.planet.staccato.config.LinksConfigProps$Self",
+      "defaultValue": "\/"
+    },
+    {
+      "name": "staccato.links.self.host",
+      "type": "java.lang.String",
+      "sourceType": "com.planet.staccato.config.LinksConfigProps$Self",
+      "defaultValue": "localhost"
+    },
+    {
+      "name": "staccato.links.self.port",
+      "type": "java.lang.Integer",
+      "sourceType": "com.planet.staccato.config.LinksConfigProps$Self",
+      "defaultValue": 8080
+    },
+    {
+      "name": "staccato.links.self.scheme",
+      "type": "java.lang.String",
+      "sourceType": "com.planet.staccato.config.LinksConfigProps$Self",
+      "defaultValue": "http"
+    },
+    {
+      "name": "staccato.links.thumbnails.context-path",
+      "type": "java.lang.String",
+      "sourceType": "com.planet.staccato.config.LinksConfigProps$Thumbnails",
+      "defaultValue": "\/thumbs"
+    },
+    {
+      "name": "staccato.links.thumbnails.host",
+      "type": "java.lang.String",
+      "sourceType": "com.planet.staccato.config.LinksConfigProps$Thumbnails",
+      "defaultValue": "localhost"
+    },
+    {
+      "name": "staccato.links.thumbnails.port",
+      "type": "java.lang.Integer",
+      "sourceType": "com.planet.staccato.config.LinksConfigProps$Thumbnails",
+      "defaultValue": 8080
+    },
+    {
+      "name": "staccato.links.thumbnails.scheme",
+      "type": "java.lang.String",
+      "sourceType": "com.planet.staccato.config.LinksConfigProps$Thumbnails",
+      "defaultValue": "http"
+    },
+    {
+      "name": "staccato.version",
+      "type": "java.lang.String",
+      "sourceType": "com.planet.staccato.config.StacConfigProps"
+    }
+  ],
+  "hints": []
+}

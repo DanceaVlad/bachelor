@@ -1,0 +1,61 @@
+# Root-Level Ignored Files
+/node_modules/                 # For any Node.js dependencies (if applicable)
+/*.env                         # Environment files
+*.log                          # Log files
+*.tmp                          # Temporary files
+*.pid                          # Process ID files
+*.swp                          # Swap files for editors
+*.lock                         # Lock files
+/.idea/                        # IDE configuration (IntelliJ)
+/.vscode/                      # VS Code settings
+/.DS_Store                     # macOS system file
+/.docker/                      # Docker-related files
+Thumbs.db                      # Windows thumbnail cache
+Desktop.ini                    # Windows system file
+
+# Docker-Specific
+docker-compose.override.yml    # Local overrides for Compose
+docker/                        # Any temporary Docker directories
+
+# Staccato-Specific Ignores
+staccato/.apt_generated
+staccato/.springBeans
+staccato/.sts4-cache
+staccato/target/               # Build output directory for Staccato
+staccato/**/target/            # Any nested `target` directories
+staccato/*.iml                 # IntelliJ IDEA files
+staccato/.settings/            # Eclipse settings
+staccato/.classpath            # Eclipse settings
+staccato/.project              # Eclipse settings
+staccato/.factorypath          # Eclipse settings
+
+# Maven Artifacts
+**/target/                     # Ignore all `target` directories
+**/*.jar                       # Ignore all JAR files
+**/*.war                       # Ignore all WAR files
+**/*.ear                       # Ignore all EAR files
+
+# Build-Specific
+staccato/**/build/             # Ignore build directories (if any)
+
+# Git Metadata
+.git/                          # Prevent accidental commits of Git metadata
+*.orig                         # Resolve merge conflicts
+*.rej                          # Rejected patches
+
+# IDE Metadata
+.idea/                         # IntelliJ IDEA project files
+.vscode/                       # VS Code project files
+*.iml                          # IntelliJ IDEA module files
+*.ipr                          # IntelliJ IDEA project files
+*.iws                          # IntelliJ IDEA workspace files
+*.classpath                    # Eclipse classpath files
+*.project                      # Eclipse project files
+*.settings/                    # Eclipse settings files
+*.launch                       # Eclipse launch files
+*.metadata/                    # Eclipse metadata files
+
+# OS-Specific
+.DS_Store                      # macOS system file
+Thumbs.db                      # Windows thumbnail cache
+Desktop.ini                    # Windows system file
