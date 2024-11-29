@@ -40,4 +40,4 @@ RUN $APP_HOME/mvnw clean install -DskipTests
 
 # Set the application to run
 WORKDIR $APP_HOME/staccato-application/target
-ENTRYPOINT ["java", "-jar", "staccato-application-1.0.0.jar"]
+ENTRYPOINT ["java", "-jar", "staccato-1.0.0.jar"]

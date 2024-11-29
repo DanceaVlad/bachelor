@@ -6,5 +6,6 @@
         "mvnw",
         "protoc",
         "redownloading"
-    ]
+    ],
+    "java.configuration.updateBuildConfiguration": "interactive"
 }

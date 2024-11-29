@@ -1,0 +1,17 @@
+{
+  "groups": [
+    {
+      "name": "staccato.grpc",
+      "type": "com.planet.staccato.grpc.GrpcConfigProps",
+      "sourceType": "com.planet.staccato.grpc.GrpcConfigProps"
+    }
+  ],
+  "properties": [
+    {
+      "name": "staccato.grpc.port",
+      "type": "java.lang.Integer",
+      "sourceType": "com.planet.staccato.grpc.GrpcConfigProps"
+    }
+  ],
+  "hints": []
+}

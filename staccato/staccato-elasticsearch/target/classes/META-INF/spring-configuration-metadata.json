@@ -9,7 +9,7 @@
       "name": "staccato.es.async-bridge-thread-pool",
       "type": "com.planet.staccato.es.config.ElasticsearchConfigProps$AsyncBridgeThreadPool",
       "sourceType": "com.planet.staccato.es.config.ElasticsearchConfigProps",
-      "sourceMethod": "getAsyncBridgeThreadPool()"
+      "sourceMethod": "public com.planet.staccato.es.config.ElasticsearchConfigProps.AsyncBridgeThreadPool getAsyncBridgeThreadPool() "
     },
     {
       "name": "staccato.es.index",
@@ -20,27 +20,24 @@
       "name": "staccato.es.mappings",
       "type": "com.planet.staccato.es.config.ElasticsearchConfigProps$Mappings",
       "sourceType": "com.planet.staccato.es.config.ElasticsearchConfigProps",
-      "sourceMethod": "getMappings()"
+      "sourceMethod": "public com.planet.staccato.es.config.ElasticsearchConfigProps.Mappings getMappings() "
     }
   ],
   "properties": [
     {
       "name": "staccato.es.async-bridge-thread-pool.daemon",
       "type": "java.lang.Boolean",
-      "sourceType": "com.planet.staccato.es.config.ElasticsearchConfigProps$AsyncBridgeThreadPool",
-      "defaultValue": true
+      "sourceType": "com.planet.staccato.es.config.ElasticsearchConfigProps$AsyncBridgeThreadPool"
     },
     {
       "name": "staccato.es.async-bridge-thread-pool.max-threads",
       "type": "java.lang.Integer",
-      "sourceType": "com.planet.staccato.es.config.ElasticsearchConfigProps$AsyncBridgeThreadPool",
-      "defaultValue": 200
+      "sourceType": "com.planet.staccato.es.config.ElasticsearchConfigProps$AsyncBridgeThreadPool"
     },
     {
       "name": "staccato.es.host",
       "type": "java.lang.String",
-      "sourceType": "com.planet.staccato.es.config.ElasticsearchConfigProps",
-      "defaultValue": "localhost"
+      "sourceType": "com.planet.staccato.es.config.ElasticsearchConfigProps"
     },
     {
       "name": "staccato.es.index.aliases",
@@ -49,31 +46,28 @@
     },
     {
       "name": "staccato.es.mappings.core-mappings",
-      "type": "java.util.Map<java.lang.String,com.planet.staccato.elasticsearch.annotation.MappingType>",
+      "type": "java.util.Map<java.lang.String,MappingType>",
       "sourceType": "com.planet.staccato.es.config.ElasticsearchConfigProps$Mappings"
     },
     {
       "name": "staccato.es.mappings.custom-mappings",
-      "type": "java.util.Map<java.lang.String,com.planet.staccato.elasticsearch.annotation.MappingType>",
+      "type": "java.util.Map<java.lang.String,MappingType>",
       "sourceType": "com.planet.staccato.es.config.ElasticsearchConfigProps$Mappings"
     },
     {
       "name": "staccato.es.max-reconnection-attempts",
       "type": "java.lang.Integer",
-      "sourceType": "com.planet.staccato.es.config.ElasticsearchConfigProps",
-      "defaultValue": 10
+      "sourceType": "com.planet.staccato.es.config.ElasticsearchConfigProps"
     },
     {
       "name": "staccato.es.number-of-replicas",
       "type": "java.lang.Integer",
-      "sourceType": "com.planet.staccato.es.config.ElasticsearchConfigProps",
-      "defaultValue": 1
+      "sourceType": "com.planet.staccato.es.config.ElasticsearchConfigProps"
     },
     {
       "name": "staccato.es.number-of-shards",
       "type": "java.lang.Integer",
-      "sourceType": "com.planet.staccato.es.config.ElasticsearchConfigProps",
-      "defaultValue": 5
+      "sourceType": "com.planet.staccato.es.config.ElasticsearchConfigProps"
     },
     {
       "name": "staccato.es.password",
@@ -83,38 +77,32 @@
     {
       "name": "staccato.es.port",
       "type": "java.lang.Integer",
-      "sourceType": "com.planet.staccato.es.config.ElasticsearchConfigProps",
-      "defaultValue": 9200
+      "sourceType": "com.planet.staccato.es.config.ElasticsearchConfigProps"
     },
     {
       "name": "staccato.es.rest-client-max-connections-per-route",
       "type": "java.lang.Integer",
-      "sourceType": "com.planet.staccato.es.config.ElasticsearchConfigProps",
-      "defaultValue": 200
+      "sourceType": "com.planet.staccato.es.config.ElasticsearchConfigProps"
     },
     {
       "name": "staccato.es.rest-client-max-connections-total",
       "type": "java.lang.Integer",
-      "sourceType": "com.planet.staccato.es.config.ElasticsearchConfigProps",
-      "defaultValue": 200
+      "sourceType": "com.planet.staccato.es.config.ElasticsearchConfigProps"
     },
     {
       "name": "staccato.es.rest-client-max-retry-timeout-millis",
       "type": "java.lang.Integer",
-      "sourceType": "com.planet.staccato.es.config.ElasticsearchConfigProps",
-      "defaultValue": 60000
+      "sourceType": "com.planet.staccato.es.config.ElasticsearchConfigProps"
     },
     {
       "name": "staccato.es.scheme",
       "type": "java.lang.String",
-      "sourceType": "com.planet.staccato.es.config.ElasticsearchConfigProps",
-      "defaultValue": "http"
+      "sourceType": "com.planet.staccato.es.config.ElasticsearchConfigProps"
     },
     {
       "name": "staccato.es.type",
       "type": "java.lang.String",
-      "sourceType": "com.planet.staccato.es.config.ElasticsearchConfigProps",
-      "defaultValue": "_doc"
+      "sourceType": "com.planet.staccato.es.config.ElasticsearchConfigProps"
     },
     {
       "name": "staccato.es.user",
