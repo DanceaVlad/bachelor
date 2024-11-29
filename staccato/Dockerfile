@@ -7,6 +7,8 @@ WORKDIR $APP_HOME
 # Copy the project files into the container
 COPY . $APP_HOME
 
+RUN apt-get update && apt-get install -y curl
+
 # Ensure Maven wrapper is executable
 RUN chmod +x $APP_HOME/mvnw
 
