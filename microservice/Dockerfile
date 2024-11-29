@@ -1,17 +1,16 @@
 # Use Zulu JDK 17 compatible with x86
 FROM azul/zulu-openjdk:17
 
-# Use x86 emulation with Rosetta
-RUN apt-get update && apt-get install -y qemu-user-static
-
 # Set working directory
 WORKDIR /app
 
-# Copy the application
-COPY target/microservice.jar /app/microservice.jar
+# Copy the microservice's JAR file into the container
+COPY target/microservice-1.0.0.jar app.jar
 
 # Expose the application port
-EXPOSE 8081
+EXPOSE 8080
 
-# Use Rosetta for runtime emulation
-CMD ["java", "-jar", "/app/microservice.jar"]
+RUN apt-get update && apt-get install -y curl
+
+# Command to run the microservice
+ENTRYPOINT ["java", "-jar", "app.jar"]

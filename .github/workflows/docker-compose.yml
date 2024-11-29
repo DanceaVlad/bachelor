@@ -35,7 +35,7 @@ jobs:
       - name: Wait for Actuator Endpoint to Become Ready
         run: |
           for i in {1..50}; do
-            if curl --silent --fail http://localhost:8080/actuator/health; then
+            if curl --silent --fail http://localhost:8081/actuator/health; then
               echo "Actuator is up!"
               exit 0
             fi
@@ -48,7 +48,7 @@ jobs:
       # Step 6: Test Actuator Endpoint
       - name: Test Actuator Endpoint
         run: |
-          response=$(curl --silent http://localhost:8080/actuator/health)
+          response=$(curl --silent http://localhost:8081/actuator/health)
           echo "Response: $response"
           if echo "$response" | grep -q '"status":"UP"'; then
             echo "Actuator endpoint test passed."

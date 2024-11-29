@@ -10,8 +10,8 @@ services:
         soft: -1
         hard: -1
     ports:
-      - "9200:9200"
-      - "9300:9300"
+      - "8082:9200" # External port 8082 for Elasticsearch
+      - "9300:9300" # Internal transport port
     networks:
       - staccato-network
 
@@ -22,11 +22,32 @@ services:
     container_name: staccato-app
     depends_on:
       - elasticsearch
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8080/actuator/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
     environment:
       - STACCATO_ES_HOST=elasticsearch6
       - STACCATO_ES_PORT=9200
     ports:
-      - "8080:8080"
+      - "8081:8080" # External port 8081 for Staccato
+    networks:
+      - staccato-network
+
+  microservice:
+    build:
+      context: ./microservice
+      dockerfile: Dockerfile
+    container_name: microservice-app
+    depends_on:
+      staccato:
+        condition: service_healthy
+    environment:
+      - STACCATO_BASE_URL=http://staccato:8080
+      - PLANET_API_KEY=y #TODO: Add API key here
+    ports:
+      - "8080:8080" # External port 8080 for the microservice
     networks:
       - staccato-network
 
