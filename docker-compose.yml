@@ -44,7 +44,6 @@ services:
       staccato:
         condition: service_healthy
     environment:
-      - STACCATO_BASE_URL=http://staccato:8080
       - PLANET_API_KEY=y #TODO: Add API key here
     ports:
       - "8080:8080" # External port 8080 for the microservice
