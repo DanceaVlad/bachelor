@@ -9,7 +9,7 @@ public class MsplanetaryTransformer implements DataTransformer {
     @Override
     public StacData transform(RawData rawData) {
         StacData stacData = new StacData("msplanetary");
-        stacData.setData(rawData.getData()); // TODO: Implement the transformation logic
+        stacData.setData(rawData.getData()); // Add implementation if needed
         return stacData;
     }
 }

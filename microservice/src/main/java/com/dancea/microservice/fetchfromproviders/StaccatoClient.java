@@ -18,6 +18,6 @@ public class StaccatoClient {
     public void indexData(StacData data) {
         String url = "http://staccato:8080/collections/" + data.getSource() + "/items";
         // restTemplate.postForEntity(url, data.getData(), String.class);
-        logger.info(String.format("Indexed data to Staccato: %s", url));
+        logger.info(String.format("Indexed data to Staccato: %s", data.getData()));
     }
 }
