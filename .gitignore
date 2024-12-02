@@ -59,3 +59,8 @@ staccato/**/build/             # Ignore build directories (if any)
 .DS_Store                      # macOS system file
 Thumbs.db                      # Windows thumbnail cache
 Desktop.ini                    # Windows system file
+
+# Angular Specific
+frontend/node_modules/
+frontend/.editorconfig
+
