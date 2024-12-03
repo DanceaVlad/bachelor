@@ -2,5 +2,19 @@
     <button id="button" (click)="onToggleNvda()">Click me</button>
 </div>
 <div id="map-container">
-    <div id="map"></div>
+    <div class="lat-container">
+        {{ viewableCoordinates()[1]}}
+    </div>
+    <div class="secondary-container">
+        <div class="long-container">
+            {{ viewableCoordinates()[0]}}
+        </div>
+        <div id="map"></div>
+        <div class="long-container">
+            {{ viewableCoordinates()[2]}}
+        </div>
+    </div>
+    <div class="lat-container">
+        {{ viewableCoordinates()[3]}}
+    </div>
 </div>

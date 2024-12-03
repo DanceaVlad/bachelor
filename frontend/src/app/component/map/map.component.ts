@@ -2,7 +2,7 @@ import { Component, OnInit, signal, effect } from '@angular/core';
 import GeoJSON from 'ol/format/GeoJSON';
 import TileLayer from 'ol/layer/Tile';
 import Map from 'ol/Map';
-import { fromLonLat } from 'ol/proj';
+import { fromLonLat, transformExtent } from 'ol/proj';
 import OSM from 'ol/source/OSM';
 import View from 'ol/View';
 import VectorLayer from 'ol/layer/Vector';
@@ -15,21 +15,26 @@ import { defaults as defaultControls } from 'ol/control';
     standalone: true,
     imports: [],
     templateUrl: './map.component.html',
-    styleUrl: './map.component.scss',
+    styleUrls: ['./map.component.scss'],
 })
 export class MapComponent implements OnInit {
     map!: Map;
 
     showNvdaLayer = signal(false);
-    nvdaData: any;
+    boundingBox = signal([0, 0, 0, 0]);
+    viewableCoordinates = signal([0, 0, 0, 0]);
 
     constructor(private readonly nvdaService: NvdaService) {
-        effect(() => {
 
-            if(this.showNvdaLayer()) {
-                // Fetch NVDA data and add it to the map
+        // React to NVDA layer toggling and to the bounding box changing
+        effect(() => {
+            if (this.showNvdaLayer()) {
+                this.map.getLayers().forEach(layer => {
+                    if (layer.get('name') === 'NVDA Layer') {
+                        this.map.removeLayer(layer);
+                    }
+                });
                 this.nvdaService.getGeoJsonData().subscribe(data => {
-                    this.nvdaData = data;
                     const vectorLayer = new VectorLayer({
                         source: new VectorSource({
                             features: new GeoJSON().readFeatures(data, {
@@ -42,7 +47,6 @@ export class MapComponent implements OnInit {
                     this.map.addLayer(vectorLayer);
                 });
             } else {
-                // Remove NVDA layer from the map
                 this.map.getLayers().forEach(layer => {
                     if (layer.get('name') === 'NVDA Layer') {
                         this.map.removeLayer(layer);
@@ -69,8 +73,22 @@ export class MapComponent implements OnInit {
             target: 'map',
             layers: [baseLayer],
             view: view,
-            controls: defaultControls({attribution: false}),
+            controls: defaultControls({ attribution: false }),
         });
+
+        // Update signals when the map view changes
+        const updateBoundingBox = () => {
+            const extentAbsolute = this.map.getView().calculateExtent();
+            const transformedExtent = transformExtent(extentAbsolute, 'EPSG:3857', 'EPSG:4326');
+            const [minLon, minLat, maxLon, maxLat] = transformedExtent.map(coord => Number(coord.toFixed(2)));
+
+            this.boundingBox.set(transformedExtent); // Updates the boundingBox signal
+            this.viewableCoordinates.set([minLon, minLat, maxLon, maxLat]); // Updates the viewableCoordinates signal
+        };
+
+        // Update bounding box on moveend and pointerdrag
+        this.map.on('moveend', updateBoundingBox);
+        this.map.on('pointerdrag', updateBoundingBox);
     }
 
     onToggleNvda(): void {
