@@ -1,0 +1,12 @@
+#map {
+    width: calc(100% - 50px);
+    height: 50vh;
+    background-color: aqua;
+}
+
+#map-container {
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}

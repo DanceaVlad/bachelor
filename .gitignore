@@ -63,4 +63,7 @@ Desktop.ini                    # Windows system file
 # Angular Specific
 frontend/node_modules/
 frontend/.editorconfig
-
+frontend/dist/
+frontend/out-tsc/
+*.log
+frontend/.angular/

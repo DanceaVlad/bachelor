@@ -50,6 +50,16 @@ services:
     networks:
       - staccato-network
 
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: frontend-app
+    ports:
+      - "8079:80" # External port 8079 for the frontend
+    networks:
+      - staccato-network
+
 networks:
   staccato-network:
     driver: bridge
