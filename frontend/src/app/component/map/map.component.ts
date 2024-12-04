@@ -26,34 +26,42 @@ export class MapComponent implements OnInit {
 
     constructor(private readonly nvdaService: NvdaService) {
 
-        // React to NVDA layer toggling and to the bounding box changing
+        // React to NVDA layer toggling but not to the bounding box
         effect(() => {
+
             if (this.showNvdaLayer()) {
-                this.map.getLayers().forEach(layer => {
-                    if (layer.get('name') === 'NVDA Layer') {
-                        this.map.removeLayer(layer);
+                // Fetch and display NDVI data
+                this.nvdaService.getNvdiData(this.boundingBox()).subscribe(
+                    (data: any) => {
+                        this.addNdviLayer(data);
                     }
-                });
-                this.nvdaService.getGeoJsonData().subscribe(data => {
-                    const vectorLayer = new VectorLayer({
-                        source: new VectorSource({
-                            features: new GeoJSON().readFeatures(data, {
-                                dataProjection: 'EPSG:4326',
-                                featureProjection: 'EPSG:3857',
-                            }),
-                        }),
-                    });
-                    vectorLayer.set('name', 'NVDA Layer');
-                    this.map.addLayer(vectorLayer);
-                });
+                );
             } else {
+                // Remove NDVI layer from the map
                 this.map.getLayers().forEach(layer => {
-                    if (layer.get('name') === 'NVDA Layer') {
+                    if (layer.get('name') === 'NDVI Layer') {
                         this.map.removeLayer(layer);
                     }
                 });
             }
+            this.map.getLayers().forEach(layer => {
+                console.log('Layer:', layer.get('name'));
+            });
         });
+
+    }
+
+    private addNdviLayer(data: any): void {
+        const vectorLayer = new VectorLayer({
+            source: new VectorSource({
+                features: new GeoJSON().readFeatures(data, {
+                    dataProjection: 'EPSG:4326',
+                    featureProjection: 'EPSG:3857',
+                }),
+            }),
+        });
+        vectorLayer.set('name', 'NDVI Layer');
+        this.map.addLayer(vectorLayer);
     }
 
     ngOnInit(): void {
@@ -93,5 +101,6 @@ export class MapComponent implements OnInit {
 
     onToggleNvda(): void {
         this.showNvdaLayer.update(value => !value);
+        console.log('showNvdaLayer changed:', this.showNvdaLayer());
     }
 }
