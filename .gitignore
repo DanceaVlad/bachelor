@@ -64,6 +64,7 @@ staccato/**/build/             # Ignore build directories (if any)
 
 # OS-Specific
 .DS_Store                      # macOS system file
+**/.DS_Store
 Thumbs.db                      # Windows thumbnail cache
 Desktop.ini                    # Windows system file
 
@@ -76,3 +77,7 @@ frontend/out-tsc/
 frontend/.angular/
 frontend/src/assets/collection_ids.json
 frontend/src/assets/collections.json
+
+# Microservice Specific
+microservice/src/main/resources/temp/
+

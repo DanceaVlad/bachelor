@@ -14,6 +14,11 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.io.InputStream;
+import java.net.URL;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -29,6 +34,8 @@ public class NdviService {
     private static final String SIGNED_GEOTIFF_LINKS_PATH = "microservice/src/main/resources/static/signedGeoTiffLinks.txt";
     private static final String GEOTIFF_LINKS_PATH = "microservice/src/main/resources/static/geoTiffLinks.txt";
     private static final String PREVIEW_LINKS_PATH = "microservice/src/main/resources/static/previewLinks.txt";
+    private static final String TEMP_DIR = "microservice/src/main/resources/temp/";
+
 
     private final RestTemplate restTemplate;
 
@@ -44,13 +51,63 @@ public class NdviService {
         String response = requestCollection(boundingBox);
 
         List<String> signedGeoTiffLinks = extractSignedGeoTiffLinks(response);
+        List<String> ndviGeoTiffLinks = extractNdviFromSignedGeoTiffLinks(signedGeoTiffLinks);
 
-        writeDataToFile(SIGNED_GEOTIFF_LINKS_PATH, signedGeoTiffLinks);
-    
-        
+        writeDataToFile(SIGNED_GEOTIFF_LINKS_PATH, ndviGeoTiffLinks);
+
+        List<File> geoTiffs = downloadGeoTiffs(ndviGeoTiffLinks);
 
         // Return the response body
         return response;
+    }
+
+    private List<File> downloadGeoTiffs(List<String> geoTiffLinks) {
+        List<File> downloadedFiles = new ArrayList<>();
+    
+        try {
+            // Ensure the temp directory exists
+            Files.createDirectories(Paths.get(TEMP_DIR));
+        } catch (IOException e) {
+            logger.error("Failed to create temporary directory: {}", TEMP_DIR, e);
+            return downloadedFiles; // Return an empty list if directory creation fails
+        }
+    
+        for (String link : geoTiffLinks) {
+            try {
+                // Extract the file name from the URL
+                String removedToken = link.substring('0', link.indexOf('?'));
+                String removedBeginning = removedToken.substring(removedToken.lastIndexOf("/") + 1);
+
+                String filePath = TEMP_DIR + File.separator + removedBeginning;
+
+                // Create necessary parent directories for the file
+                File file = new File(filePath);
+                if (!file.getParentFile().exists()) {
+                    Files.createDirectories(file.getParentFile().toPath());
+                }
+
+                // Download the file and replace if it already exists
+                try (InputStream in = new URL(link).openStream()) {
+                    Files.copy(in, file.toPath(), StandardCopyOption.REPLACE_EXISTING);
+                    downloadedFiles.add(file);
+                    logger.info("Downloaded and replaced: {}", filePath);
+                }
+            } catch (Exception e) {
+                logger.error("Failed to download: {}", link, e);
+            }
+        }
+    
+        return downloadedFiles;
+    }
+
+    private List<String> extractNdviFromSignedGeoTiffLinks(List<String> originalLinks) {
+        List<String> ndviLinks = new ArrayList<>();
+        for (String link : originalLinks) {
+            if(link.contains("NDVI")) {
+                ndviLinks.add(link);
+            }
+        }
+        return ndviLinks;
     }
 
     private List<String> extractSignedGeoTiffLinks(String data) {
