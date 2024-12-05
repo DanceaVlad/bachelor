@@ -1,5 +1,5 @@
 #map {
-    width: calc(100vw - 150px);
+    width: 70vw;
     min-width: 400px;
     height: 50vh;
     background-color: aqua;
@@ -11,6 +11,7 @@
     flex-direction: column;
     justify-content: space-between;
     align-items: center;
+    font-size: 0.8em;
 }
 
 .lat-container {
@@ -23,7 +24,7 @@
 }
 
 .long-container {
-    width: calc((100% - 150px) / 8);
+    width: 15vw;
     min-width: 40px;
     height: 50vh;
     display: flex;

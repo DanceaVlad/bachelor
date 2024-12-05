@@ -21,10 +21,8 @@ public class PlanetApiProvider implements DataProvider {
     @Override
     public StacData provideData(Object queryParams) {
         RawData rawData = fetchData(queryParams);
-        logger.info(String.format("Fetched data from planet: %s", rawData));
 
         StacData stacData = transformer.transform(rawData);
-        logger.info(String.format("Transformed data from planet: %s", stacData));
 
         return stacData;
     }

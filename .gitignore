@@ -28,6 +28,13 @@ staccato/.settings/            # Eclipse settings
 staccato/.classpath            # Eclipse settings
 staccato/.project              # Eclipse settings
 staccato/.factorypath          # Eclipse settings
+staccato/staccato-application/target/
+staccato/staccato-collections/landsat8/target/
+staccato/staccato-collections/planet/target/
+staccato/staccato-commons/target/
+staccato/staccato-community/staccato-community-grpc/target/
+staccato/staccato-community/staccato-community-kafka/target/
+staccato/staccato-elasticsearch/target/
 
 # Maven Artifacts
 **/target/                     # Ignore all `target` directories
@@ -67,3 +74,5 @@ frontend/dist/
 frontend/out-tsc/
 *.log
 frontend/.angular/
+frontend/src/assets/collection_ids.json
+frontend/src/assets/collections.json

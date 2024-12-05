@@ -1,13 +1,13 @@
 import { TestBed } from '@angular/core/testing';
 
-import { NvdaService } from './nvda.service';
+import { NdviService } from './ndvi.service';
 
-describe('NvdaService', () => {
-    let service: NvdaService;
+describe('NdviService', () => {
+    let service: NdviService;
 
     beforeEach(() => {
         TestBed.configureTestingModule({});
-        service = TestBed.inject(NvdaService);
+        service = TestBed.inject(NdviService);
     });
 
     it('should be created', () => {

@@ -32,10 +32,8 @@ public class MsplanetaryApiProvider implements DataProvider {
     @Override
     public StacData provideData(Object queryParams) {
         RawData rawData = fetchData(queryParams);
-        logger.info(String.format("Fetched data from msplanetary: %s", rawData));
 
         StacData stacData = transformer.transform(rawData);
-        logger.info(String.format("Transformed data from msplanetary: %s", stacData));
 
         return stacData;
     }
@@ -50,7 +48,6 @@ public class MsplanetaryApiProvider implements DataProvider {
                 new ParameterizedTypeReference<>() {
                 });
         Map<String, Object> responseBody = response.getBody();
-        logger.info(String.format("Fetched data from msplanetary: %s", responseBody));
 
         ObjectMapper objectMapper = new ObjectMapper();
         List<JsonNode> features = objectMapper.convertValue(responseBody.get("features"),

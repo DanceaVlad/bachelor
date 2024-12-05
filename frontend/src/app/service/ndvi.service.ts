@@ -5,7 +5,7 @@ import { Observable, of } from 'rxjs';
 @Injectable({
     providedIn: 'root',
 })
-export class NvdaService {
+export class NdviService {
     constructor(private http: HttpClient) {}
 
     getGeoJsonData(): Observable<GeoJSON.FeatureCollection> {
@@ -49,11 +49,11 @@ export class NvdaService {
      * @param boundingBox Array of 4 numbers [minLon, minLat, maxLon, maxLat].
      * @returns Observable of the GeoJSON FeatureCollection.
      */
-    getNvdiData(boundingBox: number[]): Observable<any> {
+    getNdviData(boundingBox: number[]): Observable<any> {
         // Construct the query parameter string
         const bboxQuery = boundingBox.join(',');
-
         // Call the microservice endpoint
+        console.log(`http://localhost:8080/ndvi?bbox=${bboxQuery}`);
         return this.http.get<any>(`http://localhost:8080/ndvi?bbox=${bboxQuery}`);
     }
 }

@@ -7,7 +7,7 @@ import OSM from 'ol/source/OSM';
 import View from 'ol/View';
 import VectorLayer from 'ol/layer/Vector';
 import VectorSource from 'ol/source/Vector';
-import { NvdaService } from '../../service/nvda.service';
+import { NdviService } from '../../service/ndvi.service';
 import { defaults as defaultControls } from 'ol/control';
 
 @Component({
@@ -20,18 +20,17 @@ import { defaults as defaultControls } from 'ol/control';
 export class MapComponent implements OnInit {
     map!: Map;
 
-    showNvdaLayer = signal(false);
+    showNdviLayer = signal(false);
     boundingBox = signal([0, 0, 0, 0]);
     viewableCoordinates = signal([0, 0, 0, 0]);
+    counter = signal(0);
 
-    constructor(private readonly nvdaService: NvdaService) {
-
-        // React to NVDA layer toggling but not to the bounding box
+    constructor(private readonly ndviService: NdviService) {
+        // React to NDVI layer toggling
         effect(() => {
-
-            if (this.showNvdaLayer()) {
+            if (this.showNdviLayer()) {
                 // Fetch and display NDVI data
-                this.nvdaService.getNvdiData(this.boundingBox()).subscribe(
+                this.ndviService.getNdviData(this.boundingBox()).subscribe(
                     (data: any) => {
                         this.addNdviLayer(data);
                     }
@@ -44,19 +43,15 @@ export class MapComponent implements OnInit {
                     }
                 });
             }
-            this.map.getLayers().forEach(layer => {
-                console.log('Layer:', layer.get('name'));
-            });
         });
-
     }
 
     private addNdviLayer(data: any): void {
         const vectorLayer = new VectorLayer({
             source: new VectorSource({
                 features: new GeoJSON().readFeatures(data, {
-                    dataProjection: 'EPSG:4326',
-                    featureProjection: 'EPSG:3857',
+                    dataProjection: 'EPSG:4326', // WGS84 for MODIS data
+                    featureProjection: 'EPSG:3857', // Map display projection
                 }),
             }),
         });
@@ -72,8 +67,8 @@ export class MapComponent implements OnInit {
         baseLayer.set('name', 'Base Layer');
 
         const view = new View({
-            center: fromLonLat([-0.12755, 51.507222]),
-            zoom: 13,
+            center: fromLonLat([-0.12755, 51.507222]), // London coordinates
+            zoom: 5,
         });
         view.set('name', 'London');
 
@@ -87,11 +82,22 @@ export class MapComponent implements OnInit {
         // Update signals when the map view changes
         const updateBoundingBox = () => {
             const extentAbsolute = this.map.getView().calculateExtent();
-            const transformedExtent = transformExtent(extentAbsolute, 'EPSG:3857', 'EPSG:4326');
-            const [minLon, minLat, maxLon, maxLat] = transformedExtent.map(coord => Number(coord.toFixed(2)));
+            console.log('Extent in EPSG:3857:', extentAbsolute);
 
-            this.boundingBox.set(transformedExtent); // Updates the boundingBox signal
-            this.viewableCoordinates.set([minLon, minLat, maxLon, maxLat]); // Updates the viewableCoordinates signal
+            // Transform to EPSG:4326 for display and API usage
+            const transformedExtent = transformExtent(extentAbsolute, 'EPSG:3857', 'EPSG:4326');
+            console.log('Transformed extent in EPSG:4326:', transformedExtent);
+
+            if (this.validateExtent(transformedExtent)) {
+                this.boundingBox.set(transformedExtent);
+
+                // Truncate for viewableCoordinates display
+                this.viewableCoordinates.set(
+                    transformedExtent.map(coord => parseFloat(coord.toFixed(2)))
+                );
+            } else {
+                console.error('Invalid bounding box extent:', transformedExtent);
+            }
         };
 
         // Update bounding box on moveend and pointerdrag
@@ -99,8 +105,15 @@ export class MapComponent implements OnInit {
         this.map.on('pointerdrag', updateBoundingBox);
     }
 
-    onToggleNvda(): void {
-        this.showNvdaLayer.update(value => !value);
-        console.log('showNvdaLayer changed:', this.showNvdaLayer());
+    onToggleNdvi(): void {
+        this.showNdviLayer.update(value => !value);
+    }
+
+    private validateExtent(extent: number[]): boolean {
+        return extent.length === 4 &&
+            extent[0] >= -180 &&
+            extent[1] >= -90 &&
+            extent[2] <= 180 &&
+            extent[3] <= 90;
     }
 }
