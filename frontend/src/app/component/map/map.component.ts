@@ -111,7 +111,6 @@ export class MapComponent implements OnInit {
     }
 
     private fetchAndDisplayNdviData(): void {
-
         const view = new View({
             projection: "CUSTOM_SIN",
             center: this.map.getView().getCenter(), // Center based on current view
@@ -148,6 +147,8 @@ export class MapComponent implements OnInit {
 
                         // Use the file name to identify the layer
                         tiffLayer.set('name', `NDVI Layer: ${fileName}`);
+                        tiffLayer.set('bounds', await geoTiffSource.getView().then(view => view.extent)); // Store the layer's bounds
+
                         this.map.addLayer(tiffLayer);
 
                     } catch (error) {
@@ -155,7 +156,32 @@ export class MapComponent implements OnInit {
                     }
                 }
             }
+
+            // Check and remove layers outside the view
+            this.removeLayersOutsideView();
         });
+    }
+
+    private removeLayersOutsideView(): void {
+        const currentExtent = this.map.getView().calculateExtent();
+
+        this.map.getLayers().forEach(layer => {
+            if (layer.get('name')?.startsWith('NDVI Layer')) {
+                const layerBounds = layer.get('bounds');
+                if (layerBounds && !this.extentIntersects(currentExtent, layerBounds)) {
+                    this.map.removeLayer(layer); // Remove layer if it's outside the current view
+                }
+            }
+        });
+    }
+
+    private extentIntersects(extent1: number[], extent2: number[]): boolean {
+        return !(
+            extent1[0] > extent2[2] || // extent1 is completely to the right of extent2
+            extent1[2] < extent2[0] || // extent1 is completely to the left of extent2
+            extent1[1] > extent2[3] || // extent1 is completely above extent2
+            extent1[3] < extent2[1]    // extent1 is completely below extent2
+        );
     }
 
     private fetchAndDisplayNdviResponse(): void {
