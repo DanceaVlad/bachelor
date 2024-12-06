@@ -232,28 +232,44 @@ export class MapComponent implements OnInit {
             controls: defaultControls({ attribution: false }),
         });
 
-        // Update signals when the map view changes
-        const updateBoundingBox = () => {
-            const extentAbsolute = this.map.getView().calculateExtent();
+        // Add an event listener for the mouseup event
+        this.map.on('singleclick', () => {
+            this.handleMouseUp();
+        });
 
-            // Transform to EPSG:4326 for display and API usage
-            const transformedExtent = transformExtent(extentAbsolute, 'EPSG:3857', 'EPSG:4326');
+        // Optional: Update bounding box if needed
+        this.map.on('moveend', () => {
+            this.updateBoundingBox();
+        });
+    }
 
-            if (this.validateExtent(transformedExtent)) {
-                this.boundingBox.set(transformedExtent);
+    private handleMouseUp(): void {
+        // Check if the bounding box or view extent has changed before fetching data
+        const extentAbsolute = this.map.getView().calculateExtent();
+        const transformedExtent = transformExtent(extentAbsolute, 'EPSG:3857', 'EPSG:4326');
 
-                // Truncate for viewableCoordinates display
-                this.viewableCoordinates.set(
-                    transformedExtent.map(coord => parseFloat(coord.toFixed(2)))
-                );
-            } else {
-                console.error('Invalid bounding box extent:', transformedExtent);
-            }
-        };
+        if (this.validateExtent(transformedExtent)) {
+            this.boundingBox.set(transformedExtent);
+            this.fetchAndDisplayNdviData();
+        }
+    }
 
-        // Update bounding box on moveend and pointerdrag
-        this.map.on('moveend', updateBoundingBox);
-        this.map.on('pointerdrag', updateBoundingBox);
+    private updateBoundingBox(): void {
+        const extentAbsolute = this.map.getView().calculateExtent();
+
+        // Transform to EPSG:4326 for display and API usage
+        const transformedExtent = transformExtent(extentAbsolute, 'EPSG:3857', 'EPSG:4326');
+
+        if (this.validateExtent(transformedExtent)) {
+            this.boundingBox.set(transformedExtent);
+
+            // Truncate for viewableCoordinates display
+            this.viewableCoordinates.set(
+                transformedExtent.map(coord => parseFloat(coord.toFixed(2)))
+            );
+        } else {
+            console.error('Invalid bounding box extent:', transformedExtent);
+        }
     }
 
     onToggleNdvi(): void {
