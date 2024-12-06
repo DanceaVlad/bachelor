@@ -9,6 +9,13 @@ import VectorLayer from 'ol/layer/Vector';
 import VectorSource from 'ol/source/Vector';
 import { NdviService } from '../../service/ndvi.service';
 import { defaults as defaultControls } from 'ol/control';
+import ImageLayer from 'ol/layer/Image';
+import ImageStatic from 'ol/source/ImageStatic';
+import JSZip from 'jszip';
+import proj4 from 'proj4';
+import { register } from 'ol/proj/proj4';
+import GeoTIFF from 'ol/source/GeoTIFF';
+import WebGLTileLayer from 'ol/layer/WebGLTile';
 
 @Component({
     selector: 'app-map',
@@ -26,37 +33,136 @@ export class MapComponent implements OnInit {
     counter = signal(0);
 
     constructor(private readonly ndviService: NdviService) {
-        // React to NDVI layer toggling
         effect(() => {
             if (this.showNdviLayer()) {
-                // Fetch and display NDVI data
-                this.ndviService.getNdviData(this.boundingBox()).subscribe(
-                    (data: any) => {
-                        this.addNdviLayer(data);
-                    }
-                );
+                this.loadLocalGeoTiff();
             } else {
-                // Remove NDVI layer from the map
-                this.map.getLayers().forEach(layer => {
-                    if (layer.get('name') === 'NDVI Layer') {
-                        this.map.removeLayer(layer);
-                    }
-                });
+                this.deleteNdviLayer();
             }
         });
     }
 
-    private addNdviLayer(data: any): void {
-        const vectorLayer = new VectorLayer({
-            source: new VectorSource({
-                features: new GeoJSON().readFeatures(data, {
-                    dataProjection: 'EPSG:4326', // WGS84 for MODIS data
-                    featureProjection: 'EPSG:3857', // Map display projection
-                }),
-            }),
+    private loadLocalGeoTiff(): void {
+        const imgurl = 'https://openlayers.org/data/raster/no-overviews.tif';
+
+        // Define the projection based on metadata
+        proj4.defs(
+            "EPSG:32618",
+            "+proj=utm +zone=18 +datum=WGS84 +units=m +no_defs"
+        );
+        register(proj4);
+
+        // Update map view to match the GeoTIFF projection and center
+        const view = new View({
+            projection: "EPSG:32618",
+            center: [254880, 2945100], // Center based on metadata
+            zoom: 8, // Adjust zoom level as needed
         });
-        vectorLayer.set('name', 'NDVI Layer');
-        this.map.addLayer(vectorLayer);
+
+        this.map.setView(view);
+
+        // Load and display the GeoTIFF
+        (async () => {
+            let dataurl = null;
+            if (false) {
+                console.log("Fetching image data");
+                const response = await fetch(imgurl);
+                const blob = await response.blob();
+                console.log("Received blob of length ", blob.size);
+                dataurl = URL.createObjectURL(blob);
+            } else {
+                dataurl = imgurl;
+            }
+
+            const tiffSource = new GeoTIFF({
+                sources: [
+                    {
+                        url: dataurl,
+                        min: 0, // Adjust min value for visualization
+                        max: 255, // Adjust max value for visualization
+                        nodata: 0, // Handle NoData values
+                    },
+                ],
+            });
+
+            const layer = new WebGLTileLayer({
+                source: tiffSource,
+            });
+
+            layer.set('name', 'Local GeoTIFF Layer');
+            this.map.getLayers().push(layer);
+
+            // Update the view to fit the extent of the GeoTIFF
+            tiffSource.getView()
+                .then((viewOptions) => {
+                    this.map.setView(new View(viewOptions));
+                })
+                .catch((error) => {
+                    console.error('Error setting view from GeoTIFF source:', error);
+                });
+        })();
+    }
+
+    private fetchAndDisplayNdviData(): void {
+        this.ndviService.getNdviFiles(this.boundingBox()).subscribe(async (zipBlob) => {
+            const zip = new JSZip();
+            const zipContent = await zip.loadAsync(zipBlob);
+
+            // Process the first file in the ZIP
+            const fileName = Object.keys(zipContent.files)[0];
+            if (fileName.endsWith('.tif')) {
+                try {
+                    const fileBlob = await zipContent.files[fileName].async('blob');
+                    const tiffUrl = URL.createObjectURL(fileBlob);
+
+                    // Configure GeoTIFF source with appropriate band selection
+                    const geoTiffSource = new GeoTIFF({
+                        sources: [
+                            {
+                                url: tiffUrl,
+                            },
+                        ],
+                    });
+
+                    console.log(geoTiffSource);
+
+                    // Create and add a GeoTIFF Tile Layer
+                    const tiffLayer = new TileLayer({
+                        source: geoTiffSource,
+                    });
+                    tiffLayer.set('name', 'NDVI Layer');
+                    this.map.addLayer(tiffLayer);
+                    console.log(this.map.getLayers());
+                } catch (error) {
+                    console.error(`Error processing file ${fileName}:`, error);
+                }
+            }
+        });
+    }
+
+    private fetchAndDisplayNdviResponse(): void {
+        this.ndviService.getNdviResponse(this.boundingBox()).subscribe(
+            (data: any) => {
+                const vectorLayer = new VectorLayer({
+                    source: new VectorSource({
+                        features: new GeoJSON().readFeatures(data, {
+                            dataProjection: 'EPSG:4326', // WGS84 for MODIS data
+                            featureProjection: 'EPSG:3857', // Map display projection
+                        }),
+                    }),
+                });
+                vectorLayer.set('name', 'NDVI Layer');
+                this.map.addLayer(vectorLayer);
+            }
+        );
+    }
+
+    private deleteNdviLayer(): void {
+        this.map.getLayers().forEach(layer => {
+            if (layer.get('name') === 'NDVI Layer') {
+                this.map.removeLayer(layer);
+            }
+        });
     }
 
     ngOnInit(): void {
@@ -82,11 +188,9 @@ export class MapComponent implements OnInit {
         // Update signals when the map view changes
         const updateBoundingBox = () => {
             const extentAbsolute = this.map.getView().calculateExtent();
-            console.log('Extent in EPSG:3857:', extentAbsolute);
 
             // Transform to EPSG:4326 for display and API usage
             const transformedExtent = transformExtent(extentAbsolute, 'EPSG:3857', 'EPSG:4326');
-            console.log('Transformed extent in EPSG:4326:', transformedExtent);
 
             if (this.validateExtent(transformedExtent)) {
                 this.boundingBox.set(transformedExtent);

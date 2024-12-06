@@ -49,11 +49,21 @@ export class NdviService {
      * @param boundingBox Array of 4 numbers [minLon, minLat, maxLon, maxLat].
      * @returns Observable of the GeoJSON FeatureCollection.
      */
-    getNdviData(boundingBox: number[]): Observable<any> {
-        // Construct the query parameter string
+    getNdviResponse(boundingBox: number[]): Observable<any> {
         const bboxQuery = boundingBox.join(',');
-        // Call the microservice endpoint
-        console.log(`http://localhost:8080/ndvi?bbox=${bboxQuery}`);
-        return this.http.get<any>(`http://localhost:8080/ndvi?bbox=${bboxQuery}`);
+        return this.http.get<any>(`http://localhost:8080/ndvi/response?bbox=${bboxQuery}`);
+    }
+
+    /**
+     * Fetch NDVI GeoTIFF files from the backend.
+     * @param boundingBox Array of 4 numbers [minLon, minLat, maxLon, maxLat].
+     * @returns Observable of Blob
+     */
+    getNdviFiles(boundingBox: number[]): Observable<Blob> {
+        const bboxQuery = boundingBox.join(',');
+        console.log(bboxQuery);
+        return this.http.get(`http://localhost:8080/ndvi/files?bbox=${bboxQuery}`, {
+            responseType: 'blob', // Stream the GeoTIFF data as Blob
+        });
     }
 }
