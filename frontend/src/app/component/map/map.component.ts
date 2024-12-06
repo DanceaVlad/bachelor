@@ -33,9 +33,16 @@ export class MapComponent implements OnInit {
     counter = signal(0);
 
     constructor(private readonly ndviService: NdviService) {
+        // Define the custom Sinusoidal projection based on metadata
+        proj4.defs(
+            "CUSTOM_SIN",
+            "+proj=sinu +lon_0=0 +x_0=0 +y_0=0 +datum=WGS84 +units=m +no_defs"
+        );
+        register(proj4);
+
         effect(() => {
             if (this.showNdviLayer()) {
-                this.loadLocalGeoTiff();
+                this.fetchAndDisplayNdviData();
             } else {
                 this.deleteNdviLayer();
             }
@@ -104,37 +111,48 @@ export class MapComponent implements OnInit {
     }
 
     private fetchAndDisplayNdviData(): void {
+
+        const view = new View({
+            projection: "CUSTOM_SIN",
+            center: this.map.getView().getCenter(), // Center based on current view
+            zoom: this.map.getView().getZoom(), // Zoom based on current view
+        });
+
+        this.map.setView(view);
+
         this.ndviService.getNdviFiles(this.boundingBox()).subscribe(async (zipBlob) => {
             const zip = new JSZip();
             const zipContent = await zip.loadAsync(zipBlob);
 
-            // Process the first file in the ZIP
-            const fileName = Object.keys(zipContent.files)[0];
-            if (fileName.endsWith('.tif')) {
-                try {
-                    const fileBlob = await zipContent.files[fileName].async('blob');
-                    const tiffUrl = URL.createObjectURL(fileBlob);
+            // Iterate over all files in the ZIP archive
+            for (const fileName of Object.keys(zipContent.files)) {
+                if (fileName.endsWith('.tif')) {
+                    try {
+                        const fileBlob = await zipContent.files[fileName].async('blob');
+                        const tiffUrl = URL.createObjectURL(fileBlob);
 
-                    // Configure GeoTIFF source with appropriate band selection
-                    const geoTiffSource = new GeoTIFF({
-                        sources: [
-                            {
-                                url: tiffUrl,
-                            },
-                        ],
-                    });
+                        const geoTiffSource = new GeoTIFF({
+                            sources: [
+                                {
+                                    url: tiffUrl,
+                                    min: -2000, // Set min value based on NDVI valid range
+                                    max: 10000, // Set max value based on NDVI valid range
+                                    nodata: -3000, // Handle NoData value
+                                },
+                            ],
+                        });
 
-                    console.log(geoTiffSource);
+                        const tiffLayer = new WebGLTileLayer({
+                            source: geoTiffSource,
+                        });
 
-                    // Create and add a GeoTIFF Tile Layer
-                    const tiffLayer = new TileLayer({
-                        source: geoTiffSource,
-                    });
-                    tiffLayer.set('name', 'NDVI Layer');
-                    this.map.addLayer(tiffLayer);
-                    console.log(this.map.getLayers());
-                } catch (error) {
-                    console.error(`Error processing file ${fileName}:`, error);
+                        // Use the file name to identify the layer
+                        tiffLayer.set('name', `NDVI Layer: ${fileName}`);
+                        this.map.addLayer(tiffLayer);
+
+                    } catch (error) {
+                        console.error(`Error processing file ${fileName}:`, error);
+                    }
                 }
             }
         });
@@ -172,9 +190,12 @@ export class MapComponent implements OnInit {
         });
         baseLayer.set('name', 'Base Layer');
 
+        const londonCenterInSin = proj4("EPSG:4326", "CUSTOM_SIN", [-0.12755, 51.507222]);
+
         const view = new View({
-            center: fromLonLat([-0.12755, 51.507222]), // London coordinates
+            center: londonCenterInSin,
             zoom: 5,
+            projection: "CUSTOM_SIN",
         });
         view.set('name', 'London');
 
