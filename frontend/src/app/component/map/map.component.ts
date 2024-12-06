@@ -30,7 +30,6 @@ export class MapComponent implements OnInit {
     showNdviLayer = signal(false);
     boundingBox = signal([0, 0, 0, 0]);
     viewableCoordinates = signal([0, 0, 0, 0]);
-    counter = signal(0);
 
     constructor(private readonly ndviService: NdviService) {
         // Define the custom Sinusoidal projection based on metadata
@@ -49,65 +48,38 @@ export class MapComponent implements OnInit {
         });
     }
 
-    private loadLocalGeoTiff(): void {
-        const imgurl = 'https://openlayers.org/data/raster/no-overviews.tif';
+    ngOnInit(): void {
+        // Initialize base map
+        const baseLayer = new TileLayer({
+            source: new OSM(),
+        });
+        baseLayer.set('name', 'Base Layer');
 
-        // Define the projection based on metadata
-        proj4.defs(
-            "EPSG:32618",
-            "+proj=utm +zone=18 +datum=WGS84 +units=m +no_defs"
-        );
-        register(proj4);
+        const londonCenterInSin = proj4("EPSG:4326", "CUSTOM_SIN", [-0.12755, 51.507222]);
 
-        // Update map view to match the GeoTIFF projection and center
         const view = new View({
-            projection: "EPSG:32618",
-            center: [254880, 2945100], // Center based on metadata
-            zoom: 8, // Adjust zoom level as needed
+            center: londonCenterInSin,
+            zoom: 5,
+            projection: "CUSTOM_SIN",
+        });
+        view.set('name', 'London');
+
+        this.map = new Map({
+            target: 'map',
+            layers: [baseLayer],
+            view: view,
+            controls: defaultControls({ attribution: false }),
         });
 
-        this.map.setView(view);
+        // Add an event listener for the mouseup event
+        this.map.on('singleclick', () => {
+            this.handleMouseUp();
+        });
 
-        // Load and display the GeoTIFF
-        (async () => {
-            let dataurl = null;
-            if (false) {
-                console.log("Fetching image data");
-                const response = await fetch(imgurl);
-                const blob = await response.blob();
-                console.log("Received blob of length ", blob.size);
-                dataurl = URL.createObjectURL(blob);
-            } else {
-                dataurl = imgurl;
-            }
-
-            const tiffSource = new GeoTIFF({
-                sources: [
-                    {
-                        url: dataurl,
-                        min: 0, // Adjust min value for visualization
-                        max: 255, // Adjust max value for visualization
-                        nodata: 0, // Handle NoData values
-                    },
-                ],
-            });
-
-            const layer = new WebGLTileLayer({
-                source: tiffSource,
-            });
-
-            layer.set('name', 'Local GeoTIFF Layer');
-            this.map.getLayers().push(layer);
-
-            // Update the view to fit the extent of the GeoTIFF
-            tiffSource.getView()
-                .then((viewOptions) => {
-                    this.map.setView(new View(viewOptions));
-                })
-                .catch((error) => {
-                    console.error('Error setting view from GeoTIFF source:', error);
-                });
-        })();
+        // Optional: Update bounding box if needed
+        this.map.on('moveend', () => {
+            this.updateBoundingBox();
+        });
     }
 
     private fetchAndDisplayNdviData(): void {
@@ -166,7 +138,7 @@ export class MapComponent implements OnInit {
         const currentExtent = this.map.getView().calculateExtent();
 
         this.map.getLayers().forEach(layer => {
-            if (layer.get('name')?.startsWith('NDVI Layer')) {
+            if (layer?.get('name')?.startsWith('NDVI Layer')) {
                 const layerBounds = layer.get('bounds');
                 if (layerBounds && !this.extentIntersects(currentExtent, layerBounds)) {
                     this.map.removeLayer(layer); // Remove layer if it's outside the current view
@@ -203,43 +175,9 @@ export class MapComponent implements OnInit {
 
     private deleteNdviLayer(): void {
         this.map.getLayers().forEach(layer => {
-            if (layer.get('name') === 'NDVI Layer') {
+            if (layer.get('name').contains('NDVI Layer')) {
                 this.map.removeLayer(layer);
             }
-        });
-    }
-
-    ngOnInit(): void {
-        // Initialize base map
-        const baseLayer = new TileLayer({
-            source: new OSM(),
-        });
-        baseLayer.set('name', 'Base Layer');
-
-        const londonCenterInSin = proj4("EPSG:4326", "CUSTOM_SIN", [-0.12755, 51.507222]);
-
-        const view = new View({
-            center: londonCenterInSin,
-            zoom: 5,
-            projection: "CUSTOM_SIN",
-        });
-        view.set('name', 'London');
-
-        this.map = new Map({
-            target: 'map',
-            layers: [baseLayer],
-            view: view,
-            controls: defaultControls({ attribution: false }),
-        });
-
-        // Add an event listener for the mouseup event
-        this.map.on('singleclick', () => {
-            this.handleMouseUp();
-        });
-
-        // Optional: Update bounding box if needed
-        this.map.on('moveend', () => {
-            this.updateBoundingBox();
         });
     }
 
