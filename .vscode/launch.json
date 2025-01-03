@@ -1,0 +1,14 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+      {
+        "type": "java",
+        "name": "Launch Java Application",
+        "request": "launch",
+        "mainClass": "com.example.Main", // Replace with your main class
+        "cwd": "${workspaceFolder}",
+        "vmArgs": "-Xms512m -Xmx2048m -Dspring.profiles.active=dev",
+        "console": "integratedTerminal"
+      },
+    ]
+}

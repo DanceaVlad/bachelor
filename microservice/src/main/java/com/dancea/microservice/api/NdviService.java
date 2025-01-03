@@ -19,17 +19,11 @@ import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
-import java.sql.Date;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import org.esa.snap.core.dataio.ProductIO;
-import org.esa.snap.core.datamodel.Product;
-import org.esa.snap.core.gpf.GPF;
-import org.esa.snap.core.gpf.OperatorSpiRegistry;
-import org.esa.snap.runtime.Engine;
 
 
 @Service
@@ -46,9 +40,6 @@ public class NdviService {
     private long lastTokenRefreshTime;
     private String sasToken = "";
 
-    static {
-        Engine.start();
-    }
 
     private final RestTemplate restTemplate;
 
@@ -57,20 +48,12 @@ public class NdviService {
     }
 
     public String getResponseBody(double[] boundingBox) {
-        if (boundingBox.length != 4) {
-            logger.error("Bounding box must contain exactly 4 values: [minLon, minLat, maxLon, maxLat]");
-            throw new IllegalArgumentException("Bounding box must contain exactly 4 values: [minLon, minLat, maxLon, maxLat]");
-        }
-
-        String response = requestCollection(boundingBox);
-        return response;
+        validateBoundingBox(boundingBox);
+        return requestCollection(boundingBox);
     }
 
     public List<File> getNdviFiles(double[] boundingBox) {
-        if (boundingBox.length != 4) {
-            logger.error("Bounding box must contain exactly 4 values: [minLon, minLat, maxLon, maxLat]");
-            throw new IllegalArgumentException("Bounding box must contain exactly 4 values: [minLon, minLat, maxLon, maxLat]");
-        }
+        validateBoundingBox(boundingBox);
 
         // Step 1: Request data from the collection
         String response = requestCollection(boundingBox);
@@ -88,74 +71,40 @@ public class NdviService {
         return neededGeoTiffs;
     }
 
+    private void validateBoundingBox(double[] boundingBox) {
+        if (boundingBox.length != 4) {
+            logger.error("Bounding box must contain exactly 4 values: [minLon, minLat, maxLon, maxLat]");
+            throw new IllegalArgumentException("Bounding box must contain exactly 4 values: [minLon, minLat, maxLon, maxLat]");
+        }
+    }
+
+    private String requestCollection(double[] boundingBox) {
+        // Create the request payload
+        Map<String, Object> payload = new HashMap<>();
+        payload.put("collections", new String[]{COLLECTION_ID});
+        payload.put("bbox", boundingBox);
+        payload.put("datetime", "2023-06-01T00:00:00Z/2023-06-01T23:59:59Z");
+        payload.put("limit", 100);
+        payload.put("sortby", new Object[]{Map.of("field", "datetime", "direction", "asc")});
+        payload.put("query", Map.of("platform", Map.of("eq", "terra")));
+
+        // Set headers
+        HttpHeaders headers = new HttpHeaders();
+        headers.set("Content-Type", "application/json");
+
+        // Create the request
+        HttpEntity<Map<String, Object>> request = new HttpEntity<>(payload, headers);
+
+        // Send the request
+        String url = "https://planetarycomputer.microsoft.com/api/stac/v1/search";
+        return restTemplate.postForEntity(url, request, String.class).getBody();
+    }
+
+
     private String extractFileName(String link) {
         String removedToken = link.substring('0', link.indexOf('?'));
         return removedToken.substring(removedToken.lastIndexOf("/") + 1);
 
-    }
-
-    private File processWithSnap(List<File> geoTiffFiles, double[] boundingBox) {
-        File outputFile = new File(TEMP_DIR + "processed_output.tif");
-    
-        try {
-            // Load products into SNAP
-            List<Product> products = new ArrayList<>();
-            for (File file : geoTiffFiles) {
-                Product product = ProductIO.readProduct(file.getPath());
-                if (product != null) {
-                    products.add(product);
-                    logger.info("Loaded product from file: {}", file.getPath());
-                } else {
-                    logger.error("Failed to read product from file: {}", file.getPath());
-                }
-            }
-    
-            if (products.isEmpty()) {
-                logger.error("No valid products were loaded for processing.");
-                return outputFile;
-            }
-    
-            // Combine products using the Mosaic operator
-            Map<String, Object> mosaicParameters = new HashMap<>();
-            mosaicParameters.put("sourceBands", "NDVI"); // Process NDVI band
-            mosaicParameters.put("pixelSize", "463.312716527"); // Match the original resolution of the file
-    
-            Product mosaicProduct = GPF.createProduct("Mosaic", mosaicParameters, products.toArray(new Product[0]));
-            if (mosaicProduct == null) {
-                logger.error("Mosaic operation failed.");
-                return outputFile;
-            }
-    
-            logger.info("Mosaic operation successful.");
-    
-            // Crop the mosaic using the Subset operator and bounding box
-            Map<String, Object> subsetParameters = new HashMap<>();
-            String geoRegion = String.format(
-                "POLYGON((%f %f, %f %f, %f %f, %f %f, %f %f))",
-                boundingBox[0], boundingBox[1], // minLon, minLat
-                boundingBox[2], boundingBox[1], // maxLon, minLat
-                boundingBox[2], boundingBox[3], // maxLon, maxLat
-                boundingBox[0], boundingBox[3], // minLon, maxLat
-                boundingBox[0], boundingBox[1]  // Close the polygon
-            );
-            subsetParameters.put("geoRegion", geoRegion);
-    
-            Product subsetProduct = GPF.createProduct("Subset", subsetParameters, mosaicProduct);
-            if (subsetProduct == null) {
-                logger.error("Subset operation failed.");
-                return outputFile;
-            }
-    
-            logger.info("Subset operation successful.");
-    
-            // Write the processed product to a GeoTIFF file
-            ProductIO.writeProduct(subsetProduct, outputFile.getAbsolutePath(), "GeoTIFF");
-            logger.info("Processed file saved at: {}", outputFile.getAbsolutePath());
-        } catch (Exception e) {
-            logger.error("An error occurred while processing the GeoTIFF files: {}", e.getMessage(), e);
-        }
-    
-        return outputFile;
     }
 
     private List<String> extractNewGeoTiffLinks(List<String> ndviGeoTiffLinks) {
@@ -251,28 +200,6 @@ public class NdviService {
         }
 
         return signedGeoTiffLinks;
-    }
-
-    private String requestCollection(double[] boundingBox) {
-        // Create the request payload
-        Map<String, Object> payload = new HashMap<>();
-        payload.put("collections", new String[]{COLLECTION_ID});
-        payload.put("bbox", boundingBox);
-        payload.put("datetime", "2023-06-01T00:00:00Z/2023-06-01T23:59:59Z");
-        payload.put("limit", 100);
-        payload.put("sortby", new Object[]{Map.of("field", "datetime", "direction", "asc")});
-        payload.put("query", Map.of("platform", Map.of("eq", "terra")));
-
-        // Set headers
-        HttpHeaders headers = new HttpHeaders();
-        headers.set("Content-Type", "application/json");
-
-        // Create the request
-        HttpEntity<Map<String, Object>> request = new HttpEntity<>(payload, headers);
-
-        // Send the request
-        String url = "https://planetarycomputer.microsoft.com/api/stac/v1/search";
-        return restTemplate.postForEntity(url, request, String.class).getBody();
     }
 
     private void writeDataToFile(String path, Object data) {

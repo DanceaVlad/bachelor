@@ -28,7 +28,6 @@
 	</scm>
 	<properties>
 		<java.version>17</java.version>
-		<snap.version>12.0.0-SNAPSHOT</snap.version>
 	</properties>
 	<dependencies>
 		<dependency>
@@ -67,65 +66,7 @@
     		<optional>true</optional>
 		</dependency>
 
-		<dependency>
-                <groupId>org.esa.snap</groupId>
-                <artifactId>snap-runtime</artifactId>
-                <version>${snap.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>org.esa.snap</groupId>
-                <artifactId>snap-core</artifactId>
-                <version>${snap.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>org.esa.snap</groupId>
-                <artifactId>snap-znap</artifactId>
-                <version>${snap.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>org.esa.snap</groupId>
-                <artifactId>snap-gpf</artifactId>
-                <version>${snap.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>org.esa.snap</groupId>
-                <artifactId>snap-engine-utilities</artifactId>
-                <version>${snap.version}</version>
-            </dependency>
-
-
 	</dependencies>
-
-	<distributionManagement>
-        <repository>
-            <id>snap-repo-public</id>
-            <name>Public Maven Repository for SNAP</name>
-            <url>https://nexus.snap-ci.ovh/repository/snap-maven-releases/</url>
-            <uniqueVersion>false</uniqueVersion>
-        </repository>
-        <snapshotRepository>
-            <id>snap-repo-public</id>
-            <name>Public Maven Snapshot Repository for SNAP</name>
-            <url>https://nexus.snap-ci.ovh/repository/snap-maven-snapshot/</url>
-            <uniqueVersion>false</uniqueVersion>
-        </snapshotRepository>
-    </distributionManagement>
-
-	<repositories>
-		<repository>
-				<id>snap-repo-public</id>
-				<name>Public Maven Repository for SNAP</name>
-				<url>https://nexus.snap-ci.ovh/repository/snap-maven-public/</url>
-				<releases>
-					<enabled>true</enabled>
-					<checksumPolicy>warn</checksumPolicy>
-				</releases>
-				<snapshots>
-					<enabled>true</enabled>
-					<checksumPolicy>warn</checksumPolicy>
-				</snapshots>
-		</repository>
-	</repositories>
 
 	<build>
 		<plugins>

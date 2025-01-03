@@ -1,0 +1,28 @@
+{
+  "cSpell.words": [
+    "bbox",
+    "Configurer",
+    "dataurl",
+    "EPSG",
+    "fetchfromproviders",
+    "GEOTIFF",
+    "healthcheck",
+    "imgurl",
+    "memlock",
+    "modis",
+    "moveend",
+    "Msplanetary",
+    "Ndvi",
+    "pointerdrag",
+    "Reproject",
+    "reprojected",
+    "sinu",
+    "stac",
+    "ulimits"
+  ],
+  "editor.tabSize": 4,
+  "editor.formatOnSave": false,
+  "files.autoSave": "onFocusChange",
+  "editor.mouseWheelZoom": true,
+  "java.configuration.updateBuildConfiguration": "interactive",
+}
