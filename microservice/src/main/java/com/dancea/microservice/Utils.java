@@ -26,6 +26,8 @@ public class Utils {
     public static final String TILE_OUTPUT_DIR = "microservice/src/main/resources/tiles/";
     public static final String TIFF_OUTPUT_DIR = "microservice/src/main/resources/tiffs/";
     public static final String MERGE_OUTPUT_DIR = "microservice/src/main/resources/merged.tif";
+    public static final String REPROJECTED_OUTPUT_DIR = "microservice/src/main/resources/reprojected.tif";
+    public static final String BYTE_OUTPUT_DIR = "microservice/src/main/resources/byte.vrt";
     public static final String TOKEN_KEY = "token";
 
     private static final Logger logger = LoggerFactory.getLogger(Utils.class);
@@ -83,6 +85,21 @@ public class Utils {
             Thread.currentThread().interrupt();
             logger.error("Error running command", e);
         }
+    }
+
+    // Run command and return output
+    public static String runCommand(String[] command) {
+        try {
+            Process process = new ProcessBuilder(command).start();
+            process.waitFor();
+            return new String(process.getInputStream().readAllBytes());
+        } catch (IOException e) {
+            logger.error("Error running command", e);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            logger.error("Error running command", e);
+        }
+        return "";
     }
 
     public static String extractFileName(String link) {

@@ -82,6 +82,9 @@ frontend/src/assets/collections.json
 microservice/src/main/resources/temp/
 microservice/src/main/resources/tiffs/
 microservice/src/main/resources/merged.tif
+microservice/src/main/resources/tiles/
+microservice/src/main/resources/reprojected.tif
+microservice/src/main/resources/byte.vrt
 
 staccato/.DS_Store
 .vscode/settings.json

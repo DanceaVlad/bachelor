@@ -1,77 +1,71 @@
-import { Component, OnInit, signal } from '@angular/core';
+import { Component, OnInit } from '@angular/core';
 import Map from 'ol/Map';
 import View from 'ol/View';
 import TileLayer from 'ol/layer/Tile';
 import XYZ from 'ol/source/XYZ';
 import { fromLonLat } from 'ol/proj';
-import { NdviService } from '../../service/ndvi.service';
+import MousePosition from 'ol/control/MousePosition';
+import * as control from 'ol/control';
+import LayerGroup from 'ol/layer/Group';
+import LayerSwitcher from 'ol-layerswitcher';
 
 @Component({
-    selector: 'app-map',
-    standalone: true,
-    imports: [],
-    templateUrl: './map.component.html',
-    styleUrls: ['./map.component.scss'],
+  selector: 'app-map',
+  standalone: true,
+  imports: [],
+  templateUrl: './map.component.html',
+  styleUrls: ['./map.component.scss'],
 })
 export class MapComponent implements OnInit {
+  map!: Map;
 
-    map!: Map;
-    boundingBox = signal([0, 0, 0, 0]);
-    ndviService: NdviService;
+  constructor() {}
 
-    constructor(ndviService: NdviService) {
-        this.ndviService = ndviService
-     }
+  ngOnInit(): void {
+    this.initializeMap();
+  }
 
-    ngOnInit(): void {
-        this.initializeMap();
-    }
+  initializeMap() {
+    const mousePositionControl = new MousePosition({
+      className: 'custom-mouse-position',
+      target: document.getElementById('mouse-position') || undefined,
+    });
 
-    initializeMap() {
-        // Base Map Layer (OpenStreetMap)
-        const baseLayer = new TileLayer({
-            source: new XYZ({
-                url: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png', // OSM tiles
-            }),
-            opacity: 0.1,
-        });
+    const baseLayers = new LayerGroup({
+      layers: [
+        new TileLayer({
+          visible: true,
+          source: new XYZ({
+            url: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+          }),
+        }),
+      ],
+    });
 
-        // NDVI Tile Layer (Java Backend)
-        const ndviLayer = new TileLayer({
-            source: new XYZ({
-                url: 'http://localhost:8080/tiles/{z}/{x}/{y}.png', // Replace with your Java backend endpoint
-            }),
-            opacity: 1.0, // Adjust opacity for transparency over OSM tiles
-        });
+    const overlayLayer = new LayerGroup({
+      layers: [
+        new TileLayer({
+          opacity: 1.0,
+          extent: [-20037508.341676, -8399252.552216, 20037211.940435, 149088738.179522],
+          source: new XYZ({
+            url: 'http://localhost:8080/tiles/{z}/{x}/{-y}.png',
+            tileSize: 256,
+          }),
+        }),
+      ],
+    });
 
-        // Initialize Map
-        this.map = new Map({
-            target: 'map', // The ID of the HTML element where the map will render
-            layers: [baseLayer, ndviLayer], // Add layers to the map
-            view: new View({
-                center: fromLonLat([0, 0]), // Center the map on longitude 0, latitude 0
-                zoom: 2, // Set the initial zoom level
-            }),
-        });
+    this.map = new Map({
+      controls: control.defaults().extend([mousePositionControl]),
+      target: 'map',
+      layers: [baseLayers, overlayLayer],
+      view: new View({
+        center: fromLonLat([0, 0]),
+        zoom: 0,
+      }),
+    });
 
-        // Update the bounding box whenever the view changes
-        this.map.getView().on('change:center', () => this.updateBoundingBox());
-        this.map.getView().on('change:resolution', () => this.updateBoundingBox());
-      }
-
-    updateBoundingBox() {
-        const extent = this.map.getView().calculateExtent();
-        const boundingBox = [
-            extent[0],
-            extent[1],
-            extent[2],
-            extent[3],
-        ];
-        this.boundingBox.set(boundingBox); // Update the bounding box signal
-    }
-
-    onToggleNdvi() {
-        console.log('Toggle NDVI');
-        this.ndviService.downloadGeoTiffs();
-    }
+    const layerSwitcher = new LayerSwitcher();
+    this.map.addControl(layerSwitcher);
+  }
 }

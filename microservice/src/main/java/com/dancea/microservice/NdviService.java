@@ -65,26 +65,66 @@ public class NdviService {
     }
 
     /**
-     * Convert GeoTIFF files to tiles
+     * Generate tiles from the merged GeoTIFF file with a limited number of zoom
+     * levels.
      */
-    public void convertToTiles() {
+    public void generateTiles() {
 
-        try {
+        // Step 1: Calculate the maximum zoom level
+        int maxZoom = calculateMaxZoom(294); // Limit to approximately 294 tiles
 
-            // Step 1: Store files in a list
-            List<File> geoTiffFiles = new ArrayList<>();
-            Files.walk(Paths.get(Utils.TILE_OUTPUT_DIR))
-                    .filter(Files::isRegularFile)
-                    .forEach(file -> geoTiffFiles.add(file.toFile()));
+        // Step 2: Reproject to EPSG:3857
+        String[] warpCommand = {
+                "gdalwarp",
+                "-t_srs", "EPSG:3857",
+                Utils.MERGE_OUTPUT_DIR,
+                Utils.REPROJECTED_OUTPUT_DIR
+        };
+        Utils.runCommand(warpCommand, "Successfully reprojected merged GeoTIFF to EPSG:3857",
+                "Failed to reproject merged GeoTIFF to EPSG:3857");
 
-            // Step 2: Convert GeoTIFF files to tiles
-            for (File tifFile : geoTiffFiles) {
-                convertTifToTiles(tifFile);
-            }
+        // Step 3: Convert to 8-bit Byte format
+        String[] translateCommand = {
+                "gdal_translate",
+                "-of", "VRT",
+                "-ot", "Byte",
+                "-scale",
+                Utils.REPROJECTED_OUTPUT_DIR,
+                Utils.BYTE_OUTPUT_DIR
+        };
+        Utils.runCommand(translateCommand, "Successfully converted merged GeoTIFF to 8-Bit Byte format",
+                "Failed to convert merged GeoTIFF to 8-bit Byte format");
 
-        } catch (Exception e) {
-            logger.error("Error during GeoTIFF processing", e);
+        // Step 4: Generate tiles with calculated zoom levels
+        String[] tileCommand = {
+                "gdal2tiles.py",
+                "--processes=3",
+                "-z", "0-" + maxZoom,
+                "-p", "mercator",
+                Utils.BYTE_OUTPUT_DIR,
+                Utils.TILE_OUTPUT_DIR
+        };
+        Utils.runCommand(tileCommand, "Successfully generated tiles from merged GeoTIFF",
+                "Failed to generate tiles from merged GeoTIFF");
+
+        // Step 5: Clean up intermediate files
+        // cleanupIntermediateFiles(Utils.REPROJECTED_OUTPUT_DIR, Utils.BYTE_OUTPUT_DIR);
+
+        logger.info("Tiles generated successfully from merged GeoTIFF and saved to: {}", Utils.TILE_OUTPUT_DIR);
+    }
+
+    /**
+     * Calculate the maximum zoom level to limit the number of tiles.
+     * 
+     * @param maxTiles Maximum number of tiles
+     * @return Maximum zoom level
+     */
+    private int calculateMaxZoom(int maxTiles) {
+        int zoom = 0;
+        while (Math.pow(2, 2.0 * zoom) <= maxTiles) {
+            zoom++;
         }
+        return zoom - 1; // Return the previous zoom level where the tile count is below the limit
     }
 
     private List<String> fetchAllGeoTiffLinks() {
@@ -115,7 +155,8 @@ public class NdviService {
                 HttpEntity<Map<String, Object>> request = new HttpEntity<>(payload, headers);
 
                 // Send POST request to fetch the GeoTIFF links
-                String response = restTemplate.postForObject(Utils.PLANETARY_COMPUTER_SEARCH_URL, request, String.class);
+                String response = restTemplate.postForObject(Utils.PLANETARY_COMPUTER_SEARCH_URL, request,
+                        String.class);
 
                 // Parse the response
                 ObjectMapper objectMapper = new ObjectMapper();
@@ -229,55 +270,6 @@ public class NdviService {
         }
 
         return command;
-    }
-
-    private void convertTifToTiles(File tifFile) {
-        String basePath = tifFile.getParent(); // Parent directory
-        String simplifiedPath = basePath + "/reprojected.tif";
-        String reprojectedPath = basePath + "/reprojected_3857.tif";
-        String bytePath = basePath + "/reprojected_3857_byte.vrt";
-        String tileOutputDir = basePath + "/tiles";
-
-        // Step 1: Rename the file to a simpler name
-        String moveCommand = String.format("mv %s %s", tifFile.getAbsolutePath(), simplifiedPath);
-        Utils.runCommand(moveCommand.split(" "), "Successfully renamed GeoTIFF file", "Failed to rename GeoTIFF file");
-
-        // Step 2: Reproject to EPSG:3857
-        String[] warpCommand = {
-                "gdalwarp",
-                "-t_srs", "EPSG:3857",
-                simplifiedPath,
-                reprojectedPath
-        };
-        Utils.runCommand(warpCommand, "Successfully reprojected GeoTIFF to EPSG:3857",
-                "Failed to reproject GeoTIFF to EPSG:3857");
-
-        // Step 3: Convert to 8-bit Byte format
-        String[] translateCommand = {
-                "gdal_translate",
-                "-of", "VRT",
-                "-ot", "Byte",
-                "-scale",
-                reprojectedPath,
-                bytePath
-        };
-        Utils.runCommand(translateCommand, "Successfully converted GeoTIFF to 8-Bit Byte format",
-                "Failed to convert GeoTIFF to 8-bit Byte format");
-
-        // Step 4: Generate tiles with 3 processes
-        String[] tileCommand = {
-                "gdal2tiles.py",
-                "--processes=3",
-                "-z", "0-10",
-                "-p", "mercator",
-                bytePath,
-                tileOutputDir
-        };
-        Utils.runCommand(tileCommand, "Successfully generated tiles from GeoTIFF",
-                "Failed to generate tiles from GeoTIFF");
-
-        // Step 5: Clean up intermediate files
-        cleanupIntermediateFiles(simplifiedPath, reprojectedPath, bytePath);
     }
 
     private void cleanupIntermediateFiles(String... files) {
