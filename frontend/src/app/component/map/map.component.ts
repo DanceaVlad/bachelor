@@ -33,6 +33,7 @@ export class MapComponent implements OnInit {
             source: new XYZ({
                 url: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png', // OSM tiles
             }),
+            opacity: 0.1,
         });
 
         // NDVI Tile Layer (Java Backend)
@@ -40,7 +41,7 @@ export class MapComponent implements OnInit {
             source: new XYZ({
                 url: 'http://localhost:8080/tiles/{z}/{x}/{y}.png', // Replace with your Java backend endpoint
             }),
-            opacity: 0.6, // Adjust opacity for transparency over OSM tiles
+            opacity: 1.0, // Adjust opacity for transparency over OSM tiles
         });
 
         // Initialize Map
@@ -67,10 +68,9 @@ export class MapComponent implements OnInit {
             extent[3],
         ];
         this.boundingBox.set(boundingBox); // Update the bounding box signal
-        console.log('Bounding Box:', boundingBox);
     }
 
     onToggleNdvi() {
-        this.ndviService.initializeData();
+        console.log('Toggle NDVI');
     }
 }
