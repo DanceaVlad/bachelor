@@ -72,5 +72,6 @@ export class MapComponent implements OnInit {
 
     onToggleNdvi() {
         console.log('Toggle NDVI');
+        this.ndviService.downloadGeoTiffs();
     }
 }

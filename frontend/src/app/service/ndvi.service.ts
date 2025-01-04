@@ -11,7 +11,7 @@ export class NdviService {
     /**
      * Sends a request to the backend to trigger the local download of the NDVI data.
      */
-    initializeData(): Observable<any> {
-        return this.http.get<any>(`http://localhost:8080/initialize-data`);
+    downloadGeoTiffs(): Observable<any> {
+        return this.http.get<any>(`http://localhost:8080/download-geotiffs`);
     }
 }

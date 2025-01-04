@@ -26,9 +26,24 @@ public class NdviController {
         this.ndviService = ndviService;
     }
 
-    @GetMapping("/initialize-data")
-    public void initializeData() {
-        ndviService.initializeData();
+    @GetMapping("/download-geotiffs")
+    public ResponseEntity<String> downloadGeoTiffs() {
+        try {
+            ndviService.downloadGeoTiffs();
+            return ResponseEntity.ok("GeoTIFF files downloaded successfully.");
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Error downloading GeoTIFF files.");
+        }
+    }
+
+    @GetMapping("/merge-geotiffs")
+    public ResponseEntity<String> mergeGeoTiffs() {
+        try {
+            ndviService.mergeGeoTiffs();
+            return ResponseEntity.ok("GeoTIFF files merged successfully.");
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Error merging GeoTIFF files.");
+        }
     }
 
     @GetMapping("/tiles/{z}/{x}/{y}.png")
