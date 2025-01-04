@@ -4,6 +4,7 @@ import View from 'ol/View';
 import TileLayer from 'ol/layer/Tile';
 import XYZ from 'ol/source/XYZ';
 import { fromLonLat } from 'ol/proj';
+import { NdviService } from '../../service/ndvi.service';
 
 @Component({
     selector: 'app-map',
@@ -14,10 +15,13 @@ import { fromLonLat } from 'ol/proj';
 })
 export class MapComponent implements OnInit {
 
-    constructor() { }
-
     map!: Map;
     boundingBox = signal([0, 0, 0, 0]);
+    ndviService: NdviService;
+
+    constructor(ndviService: NdviService) {
+        this.ndviService = ndviService
+     }
 
     ngOnInit(): void {
         this.initializeMap();
@@ -67,6 +71,6 @@ export class MapComponent implements OnInit {
     }
 
     onToggleNdvi() {
-        console.log('onToggleNdvi');
+        this.ndviService.initializeData();
     }
 }

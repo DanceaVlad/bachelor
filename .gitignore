@@ -80,4 +80,6 @@ frontend/src/assets/collections.json
 
 # Microservice Specific
 microservice/src/main/resources/temp/
+microservice/src/main/resources/tiles/
+microservice/src/main/resources/temporary/
 

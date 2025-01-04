@@ -3,12 +3,19 @@
     "configurations": [
       {
         "type": "java",
+        "name": "Application",
+        "request": "launch",
+        "mainClass": "com.dancea.microservice.Application",
+        "projectName": "microservice"
+      },
+      {
+        "type": "java",
         "name": "Launch Java Application",
         "request": "launch",
-        "mainClass": "com.example.Main", // Replace with your main class
+        "mainClass": "com.example.Main",
         "cwd": "${workspaceFolder}",
         "vmArgs": "-Xms512m -Xmx2048m -Dspring.profiles.active=dev",
         "console": "integratedTerminal"
-      },
+      }
     ]
 }
