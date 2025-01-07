@@ -8,6 +8,7 @@ import MousePosition from 'ol/control/MousePosition';
 import * as control from 'ol/control';
 import LayerGroup from 'ol/layer/Group';
 import LayerSwitcher from 'ol-layerswitcher';
+import 'ol-layerswitcher/dist/ol-layerswitcher.css';
 
 @Component({
   selector: 'app-map',
@@ -31,41 +32,48 @@ export class MapComponent implements OnInit {
       target: document.getElementById('mouse-position') || undefined,
     });
 
+    const baseLayer = new TileLayer({
+      source: new XYZ({
+        url: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+      }),
+    });
+    baseLayer.set('title', 'OpenStreetMap'); // Dynamically set title for LayerSwitcher
+    baseLayer.set('type', 'base'); // Mark as base layer
+
+    const ndviLayer = new TileLayer({
+      opacity: 1.0,
+      source: new XYZ({
+        url: 'http://localhost:8080/tiles/{z}/{x}/{-y}.png',
+        tileSize: 256,
+      }),
+    });
+    ndviLayer.set('title', 'NDVI Overlay'); // Dynamically set title for LayerSwitcher
+
     const baseLayers = new LayerGroup({
-      layers: [
-        new TileLayer({
-          visible: true,
-          source: new XYZ({
-            url: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-          }),
-        }),
-      ],
+      layers: [baseLayer],
     });
 
-    const overlayLayer = new LayerGroup({
-      layers: [
-        new TileLayer({
-          opacity: 1.0,
-          extent: [-20037508.341676, -8399252.552216, 20037211.940435, 149088738.179522],
-          source: new XYZ({
-            url: 'http://localhost:8080/tiles/{z}/{x}/{-y}.png',
-            tileSize: 256,
-          }),
-        }),
-      ],
+    const overlayLayers = new LayerGroup({
+      layers: [ndviLayer],
     });
+    overlayLayers.set('title', 'Overlays'); // Dynamically set title for LayerSwitcher
 
     this.map = new Map({
       controls: control.defaults().extend([mousePositionControl]),
       target: 'map',
-      layers: [baseLayers, overlayLayer],
+      layers: [baseLayers, overlayLayers],
       view: new View({
         center: fromLonLat([0, 0]),
-        zoom: 0,
+        zoom: 2,
       }),
     });
 
-    const layerSwitcher = new LayerSwitcher();
+    const layerSwitcher = new LayerSwitcher({
+      activationMode: 'click',
+      groupSelectStyle: 'group',
+      startActive: true,
+    });
+
     this.map.addControl(layerSwitcher);
   }
 }
