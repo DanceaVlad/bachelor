@@ -1,4 +1,4 @@
-package com.dancea.microservice;
+package com.dancea.microservice.msplanetary;
 
 import java.io.IOException;
 import java.util.ArrayList;

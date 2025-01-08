@@ -43,7 +43,7 @@ export class MapComponent implements OnInit {
     const ndviLayer = new TileLayer({
       opacity: 1.0,
       source: new XYZ({
-        url: 'http://localhost:8080/tiles/{z}/{x}/{-y}.png',
+        url: 'http://localhost:8080/msplanetary/tiles/{z}/{x}/{-y}.png',
         tileSize: 256,
       }),
     });

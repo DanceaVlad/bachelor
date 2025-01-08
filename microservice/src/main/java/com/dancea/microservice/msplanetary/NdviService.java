@@ -1,4 +1,4 @@
-package com.dancea.microservice;
+package com.dancea.microservice.msplanetary;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

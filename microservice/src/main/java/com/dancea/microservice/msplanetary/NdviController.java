@@ -1,4 +1,4 @@
-package com.dancea.microservice;
+package com.dancea.microservice.msplanetary;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -13,13 +13,13 @@ import org.springframework.web.bind.annotation.PathVariable;
 
 import org.springframework.core.io.Resource;
 import org.springframework.http.MediaType;
-import org.springframework.web.bind.annotation.RequestParam;
 
 
 @Controller
 public class NdviController {
     
     private static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(NdviController.class);
+    private static final String PROVIDER = "/msplanetary";
 
     private final NdviService ndviService;
 
@@ -27,7 +27,7 @@ public class NdviController {
         this.ndviService = ndviService;
     }
 
-    @GetMapping("/download-geotiffs")
+    @GetMapping(PROVIDER + "/download-geotiffs")
     public ResponseEntity<String> downloadGeoTiffs() {
         try {
             ndviService.downloadGeoTiffs();
@@ -37,7 +37,7 @@ public class NdviController {
         }
     }
 
-    @GetMapping("/merge-geotiffs")
+    @GetMapping(PROVIDER + "/merge-geotiffs")
     public ResponseEntity<String> mergeGeoTiffs() {
         try {
             ndviService.mergeGeoTiffs();
@@ -47,7 +47,7 @@ public class NdviController {
         }
     }
 
-    @GetMapping("/generate-tiles")
+    @GetMapping(PROVIDER + "/generate-tiles")
     public ResponseEntity<String> generateTiles() {
         try {
             ndviService.generateTiles();
@@ -57,7 +57,7 @@ public class NdviController {
         }
     }
     
-    @GetMapping("/tiles/{z}/{x}/{y}.png")
+    @GetMapping("PROVIDER + /tiles/{z}/{x}/{y}.png")
     public ResponseEntity<Resource> getTile(
             @PathVariable int z,
             @PathVariable int x,
