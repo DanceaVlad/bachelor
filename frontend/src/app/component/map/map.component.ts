@@ -11,69 +11,78 @@ import LayerSwitcher from 'ol-layerswitcher';
 import 'ol-layerswitcher/dist/ol-layerswitcher.css';
 
 @Component({
-  selector: 'app-map',
-  standalone: true,
-  imports: [],
-  templateUrl: './map.component.html',
-  styleUrls: ['./map.component.scss'],
+    selector: 'app-map',
+    standalone: true,
+    imports: [],
+    templateUrl: './map.component.html',
+    styleUrls: ['./map.component.scss'],
 })
 export class MapComponent implements OnInit {
-  map!: Map;
+    map!: Map;
 
-  constructor() {}
+    constructor() {}
 
-  ngOnInit(): void {
-    this.initializeMap();
-  }
+    ngOnInit(): void {
+        this.initializeMap();
+    }
 
-  initializeMap() {
-    const mousePositionControl = new MousePosition({
-      className: 'custom-mouse-position',
-      target: document.getElementById('mouse-position') || undefined,
-    });
+    initializeMap() {
+        const mousePositionControl = new MousePosition({
+            className: 'custom-mouse-position',
+            target: document.getElementById('mouse-position') || undefined,
+        });
 
-    const baseLayer = new TileLayer({
-      source: new XYZ({
-        url: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-      }),
-    });
-    baseLayer.set('title', 'OpenStreetMap'); // Dynamically set title for LayerSwitcher
-    baseLayer.set('type', 'base'); // Mark as base layer
+        const baseLayer = new TileLayer({
+            source: new XYZ({
+                url: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+            }),
+        });
+        baseLayer.set('title', 'OpenStreetMap');
+        baseLayer.set('type', 'base'); // Mark as base layer
 
-    const ndviLayer = new TileLayer({
-      opacity: 1.0,
-      source: new XYZ({
-        url: 'http://localhost:8080/msplanetary/tiles/{z}/{x}/{-y}.png',
-        tileSize: 256,
-      }),
-    });
-    ndviLayer.set('title', 'NDVI Overlay'); // Dynamically set title for LayerSwitcher
+        const msplanetaryLayer = new TileLayer({
+            opacity: 1.0,
+            source: new XYZ({
+                url: 'http://localhost:8080/msplanetary/tiles/{z}/{x}/{-y}.png',
+                tileSize: 256,
+            }),
+        });
+        msplanetaryLayer.set('title', 'MsPlanetary');
 
-    const baseLayers = new LayerGroup({
-      layers: [baseLayer],
-    });
+        const planetLayer = new TileLayer({
+            opacity: 1.0,
+            source: new XYZ({
+                url: 'https://tiles.planet.com/basemaps/v1/planet-tiles/global_monthly_2016_04_mosaic/gmap/{z}/{x}/{y}.png?api_key=PLAK380f55a7c89f4c4aa9753286349bf874',
+                tileSize: 256,
+            }),
+        });
+        planetLayer.set('title', 'Planet.com');
 
-    const overlayLayers = new LayerGroup({
-      layers: [ndviLayer],
-    });
-    overlayLayers.set('title', 'Overlays'); // Dynamically set title for LayerSwitcher
+        const baseLayers = new LayerGroup({
+            layers: [baseLayer],
+        });
 
-    this.map = new Map({
-      controls: control.defaults().extend([mousePositionControl]),
-      target: 'map',
-      layers: [baseLayers, overlayLayers],
-      view: new View({
-        center: fromLonLat([0, 0]),
-        zoom: 2,
-      }),
-    });
+        const overlayLayers = new LayerGroup({
+            layers: [msplanetaryLayer, planetLayer],
+        });
+        overlayLayers.set('title', 'Overlays');
 
-    const layerSwitcher = new LayerSwitcher({
-      activationMode: 'click',
-      groupSelectStyle: 'group',
-      startActive: true,
-    });
+        this.map = new Map({
+            controls: control.defaults().extend([mousePositionControl]),
+            target: 'map',
+            layers: [baseLayers, overlayLayers],
+            view: new View({
+                center: fromLonLat([103.83123, 1.47233]),
+                zoom: 2,
+            }),
+        });
 
-    this.map.addControl(layerSwitcher);
-  }
+        const layerSwitcher = new LayerSwitcher({
+            activationMode: 'click',
+            groupSelectStyle: 'group',
+            startActive: true,
+        });
+
+        this.map.addControl(layerSwitcher);
+    }
 }
