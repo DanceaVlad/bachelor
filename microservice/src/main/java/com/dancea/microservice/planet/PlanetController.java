@@ -4,6 +4,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.http.HttpStatus;
+import org.springframework.web.bind.annotation.RequestParam;
+
 
 
 @Controller
@@ -28,5 +30,18 @@ public class PlanetController {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(PlanetUtils.PLANET_PROVIDER_NAME + ": Error downloading GeoTIFF files.");
         }
     }
+
+    @GetMapping(PlanetUtils.PLANET_PROVIDER_URI_PATH + "/divide-geotiffs")
+    public ResponseEntity<String> getMethodName() {
+        try {
+            planetService.divideGeoTiffs();
+            logger.info(PlanetUtils.PLANET_PROVIDER_NAME + ": GeoTIFF files divided successfully.");
+            return ResponseEntity.ok(PlanetUtils.PLANET_PROVIDER_NAME + ": GeoTIFF files divided successfully.");
+        } catch (Exception e) {
+            logger.error(PlanetUtils.PLANET_PROVIDER_NAME + ": Error dividing GeoTIFF files.\n", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(PlanetUtils.PLANET_PROVIDER_NAME + ": Error dividing GeoTIFF files.");
+        }
+    }
+    
     
 }

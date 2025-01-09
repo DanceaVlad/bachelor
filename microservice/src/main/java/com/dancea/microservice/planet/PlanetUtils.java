@@ -3,8 +3,13 @@ package com.dancea.microservice.planet;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.util.ArrayList;
 import java.util.List;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpHeaders;
 
 import com.fasterxml.jackson.databind.JsonNode;
@@ -17,10 +22,29 @@ public class PlanetUtils {
     public static final String PLANET_API_URL = "https://api.planet.com/data/v1/quick-search";
     public static final String PLANET_FILE_PATH = "microservice/src/main/resources/planet/";
     public static final String PLANET_GEOTIFF_FILE_PATH = PLANET_FILE_PATH + "geotiffs/";
+    public static final String PLANET_GEOTIFF_COMPRESSED_FILE_PATH = PLANET_FILE_PATH + "geotiffs-compressed/";
+    public static final String PLANET_GEOTIFF_SPLIT_FILE_PATH = PLANET_FILE_PATH + "geotiffs-split/";
+
     public static final String PLANET_QUICKSEARCH_FILE_PATH = PLANET_FILE_PATH + "quicksearch.json";
     public static final String PLANET_QUICKSEARCH_ASSETS_FILE_PATH = PLANET_FILE_PATH + "quicksearch-assets.txt";
     public static final String PLANET_GEOTIFF_LINKS_FILE_PATH = PLANET_FILE_PATH + "geotiff-links.txt";
     public static final String PLANET_ACTIVATE_FILE_PATH = PLANET_FILE_PATH + "activate/";
+
+    private static final Logger logger = LoggerFactory.getLogger(PlanetUtils.class);
+
+    public static final List<String> fetchGeoTiffNames() {
+        List<String> geoTiffFiles = new ArrayList<>();
+        try {
+            Files.walk(Paths.get(PLANET_GEOTIFF_FILE_PATH))
+                    .filter(Files::isRegularFile)
+                    .filter(path -> path.toString().endsWith(".tif"))
+                    .forEach(file -> geoTiffFiles.add(file.toAbsolutePath().toString()));
+
+        } catch (IOException e) {
+            logger.error("Error fetching GeoTIFF files", e);
+        }
+        return geoTiffFiles;
+    }
 
     public static final HttpHeaders getHttpHeaders() {
         HttpHeaders headers = new HttpHeaders();

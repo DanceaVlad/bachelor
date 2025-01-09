@@ -20,14 +20,17 @@ public class Utils {
         throw new UnsupportedOperationException("Utility class");
     }
 
+    public static final String MSPLANETARY_PROVIDER_NAME = "MSPlanetary";
+    public static final String MSPLANETARY_PROVIDER_URI_PATH = "/msplanetary";
     public static final String COLLECTION_ID = "modis-13A1-061";
     public static final String PLANETARY_COMPUTER_SIGN_URL = "https://planetarycomputer.microsoft.com/api/sas/v1/sign";
     public static final String PLANETARY_COMPUTER_SEARCH_URL = "https://planetarycomputer.microsoft.com/api/stac/v1/search";
-    public static final String TIFF_OUTPUT_DIR = "microservice/src/main/resources/01_tiffs/";
-    public static final String MERGE_OUTPUT_DIR = "microservice/src/main/resources/02_merged.tif";
-    public static final String REPROJECTED_OUTPUT_DIR = "microservice/src/main/resources/03_reprojected.tif";
-    public static final String BYTE_OUTPUT_DIR = "microservice/src/main/resources/04_byte.vrt";
-    public static final String TILE_OUTPUT_DIR = "microservice/src/main/resources/05_tiles/";
+    public static final String PLANET_FILE_PATH = "microservice/src/main/resources/msplanetary/";
+    public static final String TIFF_OUTPUT_DIR = PLANET_FILE_PATH + "01_tiffs/";
+    public static final String MERGE_OUTPUT_DIR = PLANET_FILE_PATH + "02_merged.tif";
+    public static final String REPROJECTED_OUTPUT_DIR = PLANET_FILE_PATH + "03_reprojected.tif";
+    public static final String BYTE_OUTPUT_DIR = PLANET_FILE_PATH + "04_byte.vrt";
+    public static final String TILE_OUTPUT_DIR = PLANET_FILE_PATH + "05_tiles/";
     public static final String TOKEN_KEY = "token";
 
     private static final Logger logger = LoggerFactory.getLogger(Utils.class);

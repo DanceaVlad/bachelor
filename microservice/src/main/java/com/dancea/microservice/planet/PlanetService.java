@@ -59,6 +59,86 @@ public class PlanetService {
         downloadGeoTiffs(geoTiffLinks);
     }
 
+    /**
+     * 
+     * Divide all GeoTIFF files in the directory.
+     */
+    public void divideGeoTiffs() {
+        // Step 1: Fetch all GeoTIFF files
+        List<String> geoTiffFiles = PlanetUtils.fetchGeoTiffNames();
+
+        // Step 2: Build GDAL Commands
+        String[] commands = buildGdalCommands(geoTiffFiles);
+
+        // Step 3: Execute commands using a thread pool
+        ExecutorService executor = Executors.newFixedThreadPool(5); // 5 threads for parallel execution
+
+        List<Future<?>> futures = new ArrayList<>();
+        for (String command : commands) {
+            futures.add(executor.submit(() -> {
+                try {
+                    Process process = Runtime.getRuntime().exec(command);
+                    int exitCode = process.waitFor();
+                    if (exitCode == 0) {
+                        logger.info("Command executed successfully: {}", command);
+                    } else {
+                        logger.error("Command failed with exit code {}: {}", exitCode, command);
+                    }
+                } catch (Exception e) {
+                    logger.error("Failed to execute command: {}", e.getMessage());
+                }
+            }));
+        }
+
+        // Wait for all tasks to complete
+        for (Future<?> future : futures) {
+            try {
+                future.get(); // Wait for each task to complete
+            } catch (Exception e) {
+                logger.error("Error waiting for command execution: {}", e.getMessage());
+            }
+        }
+
+        executor.shutdown(); // Shutdown the thread pool
+        logger.info("All GeoTIFF files divided successfully.");
+    }
+
+    private String[] buildGdalCommands(List<String> geoTiffFiles) {
+        // Commands for splitting the GeoTIFF filess
+        List<String> commands = new ArrayList<>();
+
+        for (String geoTiffFile : geoTiffFiles) {
+
+            // Create the command for gdal_retile.py
+            String command = String.format(
+                    "gdal_retile.py -targetDir %s -ps 2048 2048 -co COMPRESS=DEFLATE -co TILED=YES -co BIGTIFF=YES %s",
+                    PlanetUtils.PLANET_GEOTIFF_SPLIT_FILE_PATH, geoTiffFile);
+
+            commands.add(command);
+        }
+
+        return commands.toArray(new String[0]);
+    }
+
+    private String[] buildCompressionGdalCommands(List<String> geoTiffFiles) {
+        // Commands for splitting the GeoTIFF files
+        List<String> commands = new ArrayList<>();
+
+        for (String geoTiffFile : geoTiffFiles) {
+            // Define the output directory for the split files
+            String outputDir = geoTiffFile.replace("/geotiffs", "/geotiffs-split");
+
+            // Create the command for gdal_retile.py
+            String command = String.format(
+                    "gdal_retile.py -targetDir %s -ps 512 512 -co COMPRESS=JPEG -co TILED=YES -co BIGTIFF=YES %s",
+                    outputDir, geoTiffFile);
+
+            commands.add(command);
+        }
+
+        return commands.toArray(new String[0]);
+    }
+
     private List<String> fetchGeoTiffLinks(List<String> assetLinks) {
 
         logger.info("Fetching GeoTIFF links from assets...");
@@ -305,7 +385,7 @@ public class PlanetService {
             threads.get(i).start();
             if ((i + 1) % 5 == 0) {
                 try {
-                    Thread.sleep(30000);
+                    Thread.sleep(60000);
                 } catch (InterruptedException e) {
                     logger.error("Thread sleep interrupted: {}", e.getMessage());
                 }
