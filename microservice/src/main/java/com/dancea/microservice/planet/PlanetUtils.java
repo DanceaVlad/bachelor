@@ -24,6 +24,7 @@ public class PlanetUtils {
     public static final String PLANET_GEOTIFF_FILE_PATH = PLANET_FILE_PATH + "geotiffs/";
     public static final String PLANET_GEOTIFF_COMPRESSED_FILE_PATH = PLANET_FILE_PATH + "geotiffs-compressed/";
     public static final String PLANET_GEOTIFF_SPLIT_FILE_PATH = PLANET_FILE_PATH + "geotiffs-split/";
+    public static final String PLANET_GEOTIFF_MERGED_FILE_PATH = PLANET_FILE_PATH + "merged.tif";
 
     public static final String PLANET_QUICKSEARCH_FILE_PATH = PLANET_FILE_PATH + "quicksearch.json";
     public static final String PLANET_QUICKSEARCH_ASSETS_FILE_PATH = PLANET_FILE_PATH + "quicksearch-assets.txt";
@@ -32,16 +33,32 @@ public class PlanetUtils {
 
     private static final Logger logger = LoggerFactory.getLogger(PlanetUtils.class);
 
-    public static final List<String> fetchGeoTiffNames() {
+    public static final void runSingleGdalCommand(String[] command, String successMessage, String errorMessage) {
+        try {
+            Process process = new ProcessBuilder(command).inheritIO().start();
+            if (process.waitFor() == 0) {
+                logger.info("{}", successMessage);
+            } else {
+                logger.error("{}", errorMessage);
+            }
+        } catch (IOException e) {
+            logger.error("Error running command", e);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            logger.error("Error running command", e);
+        }
+    }
+
+    public static final List<String> fetchFilePathsInDirectory(String directory, String extension) {
         List<String> geoTiffFiles = new ArrayList<>();
         try {
-            Files.walk(Paths.get(PLANET_GEOTIFF_FILE_PATH))
+            Files.walk(Paths.get(directory))
                     .filter(Files::isRegularFile)
-                    .filter(path -> path.toString().endsWith(".tif"))
+                    .filter(path -> path.toString().endsWith("." + extension))
                     .forEach(file -> geoTiffFiles.add(file.toAbsolutePath().toString()));
 
         } catch (IOException e) {
-            logger.error("Error fetching GeoTIFF files", e);
+            logger.error("Error fetching file paths", e);
         }
         return geoTiffFiles;
     }

@@ -32,7 +32,7 @@ public class PlanetController {
     }
 
     @GetMapping(PlanetUtils.PLANET_PROVIDER_URI_PATH + "/divide-geotiffs")
-    public ResponseEntity<String> getMethodName() {
+    public ResponseEntity<String> divideGeoTiffs() {
         try {
             planetService.divideGeoTiffs();
             logger.info(PlanetUtils.PLANET_PROVIDER_NAME + ": GeoTIFF files divided successfully.");
@@ -42,6 +42,19 @@ public class PlanetController {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(PlanetUtils.PLANET_PROVIDER_NAME + ": Error dividing GeoTIFF files.");
         }
     }
+
+    @GetMapping(PlanetUtils.PLANET_PROVIDER_URI_PATH + "/merge-geotiffs")
+    public ResponseEntity<String> mergeGeoTiffs() {
+        try {
+            planetService.mergeGeoTiffs();
+            logger.info(PlanetUtils.PLANET_PROVIDER_NAME + ": GeoTIFF files merged successfully.");
+            return ResponseEntity.ok(PlanetUtils.PLANET_PROVIDER_NAME + ": GeoTIFF files merged successfully.");
+        } catch (Exception e) {
+            logger.error(PlanetUtils.PLANET_PROVIDER_NAME + ": Error merging GeoTIFF files.\n", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(PlanetUtils.PLANET_PROVIDER_NAME + ": Error merging GeoTIFF files.");
+        }
+    }
+    
     
     
 }

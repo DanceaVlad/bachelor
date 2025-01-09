@@ -65,10 +65,10 @@ public class PlanetService {
      */
     public void divideGeoTiffs() {
         // Step 1: Fetch all GeoTIFF files
-        List<String> geoTiffFiles = PlanetUtils.fetchGeoTiffNames();
+        List<String> geoTiffFiles = PlanetUtils.fetchFilePathsInDirectory(PlanetUtils.PLANET_GEOTIFF_FILE_PATH, "tif");
 
         // Step 2: Build GDAL Commands
-        String[] commands = buildGdalCommands(geoTiffFiles);
+        String[] commands = gdalRetile(geoTiffFiles);
 
         // Step 3: Execute commands using a thread pool
         ExecutorService executor = Executors.newFixedThreadPool(5); // 5 threads for parallel execution
@@ -103,7 +103,38 @@ public class PlanetService {
         logger.info("All GeoTIFF files divided successfully.");
     }
 
-    private String[] buildGdalCommands(List<String> geoTiffFiles) {
+    /**
+     * Merge all GeoTIFF files in the directory.
+     */
+    public void mergeGeoTiffs() {
+        // Step 1: Fetch all GeoTIFF files
+        List<String> geoTiffFiles = PlanetUtils.fetchFilePathsInDirectory(PlanetUtils.PLANET_GEOTIFF_SPLIT_FILE_PATH,
+                "tif");
+
+        // Step 2: Build GDAL Command
+        String[] command = gdalMerge(geoTiffFiles);
+
+        // Step 3: Execute the command
+        PlanetUtils.runSingleGdalCommand(command, "Successfully merged GeoTIFF files",
+                "Failed to merge GeoTIFF files");
+
+    }
+
+    private String[] gdalMerge(List<String> geoTiffFiles) {
+        String[] command = new String[geoTiffFiles.size() + 3];
+
+        command[0] = "gdal_merge.py";
+        command[1] = "-o";
+        command[2] = PlanetUtils.PLANET_GEOTIFF_MERGED_FILE_PATH;
+        for (int i = 0; i < geoTiffFiles.size(); i++) {
+            logger.info("{} added to the merge", geoTiffFiles.get(i));
+            command[i + 3] = geoTiffFiles.get(i);
+        }
+
+        return command;
+    }
+
+    private String[] gdalRetile(List<String> geoTiffFiles) {
         // Commands for splitting the GeoTIFF filess
         List<String> commands = new ArrayList<>();
 

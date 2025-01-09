@@ -89,3 +89,5 @@ microservice/src/main/resources/planet
 
 staccato/.DS_Store
 .vscode/settings.json
+.vscode/launch.json
+staccato/.DS_Store
