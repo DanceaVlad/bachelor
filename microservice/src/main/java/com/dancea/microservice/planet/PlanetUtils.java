@@ -16,7 +16,7 @@ public class PlanetUtils {
     public static final String PLANET_PROVIDER_API_KEY = "PLAK380f55a7c89f4c4aa9753286349bf874";
     public static final String PLANET_API_URL = "https://api.planet.com/data/v1/quick-search";
     public static final String PLANET_FILE_PATH = "microservice/src/main/resources/planet/";
-    public static final String PLANET_GEOTIFF_FILE_PATH = PLANET_FILE_PATH + "geotiff/";
+    public static final String PLANET_GEOTIFF_FILE_PATH = PLANET_FILE_PATH + "geotiffs/";
     public static final String PLANET_QUICKSEARCH_FILE_PATH = PLANET_FILE_PATH + "quicksearch.json";
     public static final String PLANET_QUICKSEARCH_ASSETS_FILE_PATH = PLANET_FILE_PATH + "quicksearch-assets.txt";
     public static final String PLANET_GEOTIFF_LINKS_FILE_PATH = PLANET_FILE_PATH + "geotiff-links.txt";
