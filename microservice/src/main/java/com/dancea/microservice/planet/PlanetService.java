@@ -1,10 +1,11 @@
 package com.dancea.microservice.planet;
 
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.HashMap;
 
 import org.slf4j.Logger;
@@ -37,82 +38,51 @@ public class PlanetService {
         // Step 1: Fetch Assets links from the external source
         List<String> assetsLinks = fetchAssetsLinks();
 
-        // Step 2: Activate the assets if needed
-        activateAssets(assetsLinks);
+        PlanetUtils.writeArrayToFile(PlanetUtils.PLANET_QUICKSEARCH_ASSETS_FILE_PATH, assetsLinks);
 
-        // Step 3: Download GeoTIFF files
-        downloadGeoTiffs(assetsLinks);
+        // Step 2: Activate the assets if needed
+        // activateAssets(assetsLinks);
+
+        // Step 3: Fetch GeoTIFF links from assets
+        List<String> geoTiffLinks = fetchGeoTiffLinks(assetsLinks);
+
+        PlanetUtils.writeArrayToFile(PlanetUtils.PLANET_GEOTIFF_LINKS_FILE_PATH, geoTiffLinks);
+
+        // Step 4: Download GeoTIFF files
+        downloadGeoTiffs(geoTiffLinks);
     }
 
-    private void activateAssets(List<String> assetsLinks) {
-
-        Map<String, String> downloadLinks = new HashMap<>();
+    private List<String> fetchGeoTiffLinks(List<String> assetLinks) {
+        List<String> geoTiffLinks = new ArrayList<>();
         ObjectMapper mapper = new ObjectMapper();
 
-        ExecutorService executorService = Executors.newFixedThreadPool(4);
+        for (String assetUrl : assetLinks) {
+            try {
+                // Fetch asset details
+                HttpEntity<String> assetRequest = new HttpEntity<>(PlanetUtils.getHttpHeaders());
+                String response = restTemplate.exchange(assetUrl, HttpMethod.GET, assetRequest, String.class).getBody();
 
-        for (String assetUrl : assetsLinks) {
-            executorService.submit(() -> {
-                try {
-                    // Create the request
-                    HttpEntity<String> assetRequest = new HttpEntity<>(PlanetUtils.getHttpHeaders());
-
-                    // Send GET request to fetch the asset
-                    String response = restTemplate.exchange(assetUrl, HttpMethod.GET, assetRequest, String.class)
-                            .getBody();
-
-                    // Parse the response
-                    JsonNode rootNode = mapper.readTree(response);
-                    JsonNode asset = rootNode.get("ortho_analytic_4b_sr");
-
-                    boolean isInactive = asset != null && asset.has("status")
-                            && asset.get("status").asText().equals("inactive");
-
-                    if (isInactive) {
-
-                        // Get the asset activation link
-                        String assetActivationLink = asset.get("_links").get("activate").asText();
-
-                        // Create the request
-                        HttpEntity<String> activationRequest = new HttpEntity<>("{}", PlanetUtils.getHttpHeaders());
-
-                        // Send POST request to activate the asset
-                        String activateResponse = restTemplate
-                                .exchange(assetActivationLink, HttpMethod.POST, activationRequest, String.class)
-                                .getBody();
-
-                        // Parse the response
-                        JsonNode activateRootNode = mapper.readTree(activateResponse);
-                        JsonNode location = activateRootNode.get("location");
-
-                        if (location != null) {
-                            downloadLinks.put(assetUrl, location.asText());
-                        } else {
-                            logger.error("Failed to activate asset: {}", activateResponse);
-                        }
-                    }
-
-                    boolean isActivating = asset != null && asset.has("status")
-                            && asset.get("status").asText().equals("activating");
-                    if (isActivating) {
-                        logger.info("Asset is activating. Please wait...");
-                    }
-
-                    boolean isActive = asset != null && asset.has("status")
-                            && asset.get("status").asText().equals("active");
-                    if (isActive) {
-                        logger.info("Asset is already active.");
-                    }
-
-                } catch (Exception e) {
-                    logger.error("Failed to activate asset: {}", e.getMessage());
+                // Parse the response
+                JsonNode rootNode = mapper.readTree(response);
+                JsonNode asset = rootNode.get("ortho_analytic_4b_sr");
+                if (asset != null && asset.has("status") && "active".equals(asset.get("status").asText())) {
+                    // Get the download link
+                    String downloadUrl = asset.get("location").asText();
+                    geoTiffLinks.add(downloadUrl);
+                } else {
+                    logger.warn("Asset is not active or download link is missing for: {}", assetUrl);
                 }
-            });
+
+            } catch (Exception e) {
+                logger.error("Failed to fetch asset details: {}", e.getMessage());
+            }
         }
+
+        return geoTiffLinks;
     }
 
     private List<String> fetchAssetsLinks() {
-        List<String> geoTiffLinks = new ArrayList<>();
+        List<String> assetLinks = new ArrayList<>();
         String nextUrl = PlanetUtils.PLANET_API_URL;
 
         try {
@@ -141,7 +111,7 @@ public class PlanetService {
                         String assetsLink = links != null && links.has("assets") ? links.get("assets").asText() : null;
 
                         if (assetsLink != null)
-                            geoTiffLinks.add(assetsLink);
+                            assetLinks.add(assetsLink);
                         else
                             logger.warn("No assets found in the feature.");
                     }
@@ -155,13 +125,76 @@ public class PlanetService {
 
             } while (nextUrl != null);
 
-            logger.info("Fetched {} GeoTIFF links from the external source.", geoTiffLinks.size());
+            logger.info("Fetched {} GeoTIFF links from the external source.", assetLinks.size());
 
         } catch (Exception e) {
             logger.error("Failed to fetch GeoTIFF links from the external source: {}", e.getMessage());
         }
 
-        return geoTiffLinks;
+        return assetLinks;
+    }
+
+    private void activateAssets(List<String> assetsLinks) {
+
+        Map<String, String> downloadLinks = new HashMap<>();
+        ObjectMapper mapper = new ObjectMapper();
+
+        for (String assetUrl : assetsLinks) {
+            try {
+                // Create the request
+                HttpEntity<String> assetRequest = new HttpEntity<>(PlanetUtils.getHttpHeaders());
+
+                // Send GET request to fetch the asset
+                String response = restTemplate.exchange(assetUrl, HttpMethod.GET, assetRequest, String.class)
+                        .getBody();
+
+                // Parse the response
+                JsonNode rootNode = mapper.readTree(response);
+                JsonNode asset = rootNode.get("ortho_analytic_4b_sr");
+
+                boolean isInactive = asset != null && asset.has("status")
+                        && asset.get("status").asText().equals("inactive");
+
+                if (isInactive) {
+
+                    // Get the asset activation link
+                    String assetActivationLink = asset.get("_links").get("activate").asText();
+
+                    // Create the request
+                    HttpEntity<String> activationRequest = new HttpEntity<>("{}", PlanetUtils.getHttpHeaders());
+
+                    // Send POST request to activate the asset
+                    String activateResponse = restTemplate
+                            .exchange(assetActivationLink, HttpMethod.POST, activationRequest, String.class)
+                            .getBody();
+
+                    // Parse the response
+                    JsonNode activateRootNode = mapper.readTree(activateResponse);
+                    JsonNode location = activateRootNode.get("location");
+
+                    if (location != null) {
+                        downloadLinks.put(assetUrl, location.asText());
+                    } else {
+                        logger.error("Failed to activate asset: {}", activateResponse);
+                    }
+                }
+
+                boolean isActivating = asset != null && asset.has("status")
+                        && asset.get("status").asText().equals("activating");
+                if (isActivating) {
+                    logger.info("Asset is activating. Please wait...");
+                }
+
+                boolean isActive = asset != null && asset.has("status")
+                        && asset.get("status").asText().equals("active");
+                if (isActive) {
+                    logger.info("Asset is already active.");
+                }
+
+            } catch (Exception e) {
+                logger.error("Failed to activate asset: {}", e.getMessage());
+            }
+        }
     }
 
     private Map<String, Object> createSearchPayload() {
@@ -196,6 +229,24 @@ public class PlanetService {
     }
 
     private void downloadGeoTiffs(List<String> geoTiffLinks) {
-        logger.info("Downloading {} GeoTIFF files...", geoTiffLinks.size());
+        for (String geoTiffLink : geoTiffLinks) {
+            try {
+
+                // Download the file
+                HttpEntity<String> downloadRequest = new HttpEntity<>(PlanetUtils.getHttpHeaders());
+                byte[] fileContent = restTemplate
+                        .exchange(geoTiffLink, HttpMethod.GET, downloadRequest, byte[].class).getBody();
+
+                // Save the file locally
+                String fileName = geoTiffLink.substring(geoTiffLink.lastIndexOf('/') + 1) + ".tif";
+                Path filePath = Paths.get(PlanetUtils.PLANET_GEOTIFF_FILE_PATH, fileName);
+                Files.write(filePath, fileContent);
+
+                logger.info("Downloaded and saved asset to: {}", filePath.toAbsolutePath());
+
+            } catch (Exception e) {
+                logger.error("Failed to fetch asset details: {}", e.getMessage());
+            }
+        }
     }
 }
