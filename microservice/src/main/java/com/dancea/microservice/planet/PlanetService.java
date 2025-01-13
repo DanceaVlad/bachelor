@@ -134,6 +134,7 @@ public class PlanetService {
         gdalBuildVRT();
     }
 
+    @SuppressWarnings("unused")
     private void gdalReproject() {
 
         logger.info("Reprojecting GeoTIFF files to Web Mercator...");
@@ -171,6 +172,9 @@ public class PlanetService {
                     } else {
                         logger.error("Failed to reproject to Web Mercator: {}", file);
                     }
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    logger.error("Thread was interrupted: {}", e.getMessage());
                 } catch (Exception e) {
                     logger.error("Error reprojecting file to Web Mercator: {}", e.getMessage());
                 }
@@ -182,6 +186,7 @@ public class PlanetService {
             try {
                 Thread.sleep(100);
             } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
                 logger.error("Error waiting for executor to terminate: {}", e.getMessage());
             }
         }
@@ -468,6 +473,7 @@ public class PlanetService {
                 try {
                     Thread.sleep(1000);
                 } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
                     logger.error("Thread sleep interrupted: {}", e.getMessage());
                 }
             }
@@ -478,6 +484,7 @@ public class PlanetService {
             try {
                 thread.join();
             } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
                 logger.error("Thread join interrupted: {}", e.getMessage());
             }
         }

@@ -4,11 +4,14 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+
+import jakarta.annotation.PostConstruct;
 
 import java.io.File;
 import java.io.IOException;
@@ -26,6 +29,8 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
+import com.dancea.microservice.Utils;
+
 @Service
 public class NdviService {
 
@@ -33,108 +38,46 @@ public class NdviService {
 
     private final RestTemplate restTemplate;
 
+    private String sasToken = "";
+    private long lastTokenRefreshTime;
+
     public NdviService(RestTemplate restTemplate) {
         this.restTemplate = restTemplate;
     }
 
-    /**
-     * Fetch all GeoTIFF files and save them locally.
-     */
-    public void downloadGeoTiffs() {
+    @PostConstruct
+    public void prepareProvider() {
 
+        // Step 1: Download GeoTIFF files
+        download();
+
+        // Step 2: Merge GeoTIFF files
+        merge();
+
+        // Step 3: Generate tiles
+        generateTiles();
+
+        // Step 4: Cleanup intermediate files
+        cleanupIntermediateFiles();
+    }
+
+    // Step 1
+    private void download() {
         // Step 1: Fetch GeoTIFF links from the external source
-        List<String> geoTiffLinks = fetchAllGeoTiffLinks();
+        List<String> geoTiffLinks = fetchGeoTiffLinks();
 
         // Step 2: Download GeoTIFF files
         downloadGeoTiffs(geoTiffLinks);
     }
 
-    /**
-     * Merge all GeoTIFF files into a single file.
-     */
-    public void mergeGeoTiffs() {
-
-        // Step 1: Fetch GeoTIFF files
-        List<String> geoTiffFiles = fetchGeoTiffNames();
-
-        // Step 2: Build GDAL command
-        String[] command = buildGdalCommand(geoTiffFiles);
-
-        // Step 3: Run the command
-        Utils.runCommand(command, "Successfully merged GeoTIFF files", "Failed to merge GeoTIFF files");
-    }
-
-    /**
-     * Generate tiles from the merged GeoTIFF file with a limited number of zoom
-     * levels.
-     */
-    public void generateTiles() {
-
-        // Step 1: Calculate the maximum zoom level
-        int maxZoom = calculateMaxZoom(294); // Limit to approximately 294 tiles
-
-        // Step 2: Reproject to EPSG:3857
-        String[] warpCommand = {
-                "gdalwarp",
-                "-t_srs", "EPSG:3857",
-                Utils.MERGE_OUTPUT_DIR,
-                Utils.REPROJECTED_OUTPUT_DIR
-        };
-        Utils.runCommand(warpCommand, "Successfully reprojected merged GeoTIFF to EPSG:3857",
-                "Failed to reproject merged GeoTIFF to EPSG:3857");
-
-        // Step 3: Convert to 8-bit Byte format
-        String[] translateCommand = {
-                "gdal_translate",
-                "-of", "VRT",
-                "-ot", "Byte",
-                "-scale",
-                Utils.REPROJECTED_OUTPUT_DIR,
-                Utils.BYTE_OUTPUT_DIR
-        };
-        Utils.runCommand(translateCommand, "Successfully converted merged GeoTIFF to 8-Bit Byte format",
-                "Failed to convert merged GeoTIFF to 8-bit Byte format");
-
-        // Step 4: Generate tiles with calculated zoom levels
-        String[] tileCommand = {
-                "gdal2tiles.py",
-                "--processes=3",
-                "-z", "0-" + maxZoom,
-                "-p", "mercator",
-                Utils.BYTE_OUTPUT_DIR,
-                Utils.TILE_OUTPUT_DIR
-        };
-        Utils.runCommand(tileCommand, "Successfully generated tiles from merged GeoTIFF",
-                "Failed to generate tiles from merged GeoTIFF");
-
-        // Step 5: Clean up intermediate files
-        // cleanupIntermediateFiles(Utils.REPROJECTED_OUTPUT_DIR, Utils.BYTE_OUTPUT_DIR);
-
-        logger.info("Tiles generated successfully from merged GeoTIFF and saved to: {}", Utils.TILE_OUTPUT_DIR);
-    }
-
-    /**
-     * Calculate the maximum zoom level to limit the number of tiles.
-     * 
-     * @param maxTiles Maximum number of tiles
-     * @return Maximum zoom level
-     */
-    private int calculateMaxZoom(int maxTiles) {
-        int zoom = 0;
-        while (Math.pow(2, 2.0 * zoom) <= maxTiles) {
-            zoom++;
-        }
-        return zoom - 1; // Return the previous zoom level where the tile count is below the limit
-    }
-
-    private List<String> fetchAllGeoTiffLinks() {
+    private List<String> fetchGeoTiffLinks() {
 
         List<String> geoTiffLinks = new ArrayList<>();
         try {
 
             // Define the initial request payload
             Map<String, Object> payload = new HashMap<>();
-            payload.put("collections", new String[] { Utils.COLLECTION_ID });
+            payload.put("collections", new String[] { Utils.MSPLANETARY_COLLECTION_ID });
             payload.put("datetime", "2023-06-01T00:00:00Z/2023-06-01T23:59:59Z");
             payload.put("limit", 500);
             payload.put("sortby", new Object[] { Map.of("field", "datetime", "direction", "asc") });
@@ -144,7 +87,7 @@ public class NdviService {
             do {
                 // Add the token to the payload for subsequent pages
                 if (nextPageToken != null) {
-                    payload.put(Utils.TOKEN_KEY, nextPageToken);
+                    payload.put(Utils.MSPLANETARY_TOKEN_KEY, nextPageToken);
                 }
 
                 // Set headers
@@ -155,7 +98,7 @@ public class NdviService {
                 HttpEntity<Map<String, Object>> request = new HttpEntity<>(payload, headers);
 
                 // Send POST request to fetch the GeoTIFF links
-                String response = restTemplate.postForObject(Utils.PLANETARY_COMPUTER_SEARCH_URL, request,
+                String response = restTemplate.postForObject(Utils.MSPLANETARY_SEARCH_URL, request,
                         String.class);
 
                 // Parse the response
@@ -181,17 +124,19 @@ public class NdviService {
                     for (JsonNode link : links) {
                         if ("next".equals(link.get("rel").asText())) {
                             JsonNode body = link.get("body");
-                            if (body != null && body.has(Utils.TOKEN_KEY)) {
-                                nextPageToken = body.get(Utils.TOKEN_KEY).asText();
+                            if (body != null && body.has(Utils.MSPLANETARY_TOKEN_KEY)) {
+                                nextPageToken = body.get(Utils.MSPLANETARY_TOKEN_KEY).asText();
                             }
                         }
                     }
                 }
             } while (nextPageToken != null); // Continue while there are more pages
 
-            return Utils.appendSASTokenToLinks(geoTiffLinks);
+            return appendSASTokenToLinks(geoTiffLinks);
         } catch (Exception e) {
             logger.error("Error fetching GeoTIFF links", e);
+        } finally {
+            logger.info("[01] Fetched {} GeoTIFF links", geoTiffLinks.size());
         }
         return geoTiffLinks;
     }
@@ -202,12 +147,12 @@ public class NdviService {
         List<Future<File>> futures = new ArrayList<>();
 
         try {
-            Files.createDirectories(Paths.get(Utils.TIFF_OUTPUT_DIR));
+            Files.createDirectories(Paths.get(Utils.MSPLANETARY_TIFF_DIR_PATH));
 
             for (String link : geoTiffLinks) {
                 Future<File> future = executor.submit(() -> {
                     try {
-                        String filePath = Utils.TIFF_OUTPUT_DIR + Utils.extractFileName(link);
+                        String filePath = Utils.MSPLANETARY_TIFF_DIR_PATH + extractFileName(link);
                         File file = new File(filePath);
 
                         if (!file.exists()) {
@@ -231,54 +176,182 @@ public class NdviService {
                 }
             }
 
-            logger.info("{} GeoTIFF files downloaded successfully", downloadedFiles.size());
-
         } catch (IOException e) {
-            logger.error("Failed to create temporary directory: {}", Utils.TIFF_OUTPUT_DIR, e);
+            logger.error("Failed to create temporary directory: {}", Utils.MSPLANETARY_TIFF_DIR_PATH, e);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             logger.error("Thread was interrupted during parallel GeoTIFF downloads", e);
         } catch (ExecutionException e) {
             logger.error("Error during parallel GeoTIFF downloads", e);
         } finally {
+            logger.info("[02] Downloaded {} GeoTIFF files", downloadedFiles.size());
             executor.shutdown();
         }
     }
 
-    public static final List<String> fetchGeoTiffNames() {
+    // Step 2
+    private List<String> fetchGeoTiffPaths() {
         List<String> geoTiffFiles = new ArrayList<>();
         try {
-            Files.walk(Paths.get(Utils.TIFF_OUTPUT_DIR))
+            Files.walk(Paths.get(Utils.MSPLANETARY_TIFF_DIR_PATH))
                     .filter(Files::isRegularFile)
                     .forEach(file -> geoTiffFiles.add(file.toAbsolutePath().toString()));
 
         } catch (IOException e) {
             logger.error("Error fetching GeoTIFF files", e);
+        } finally {
+            logger.info("[03] Fetched {} GeoTIFF paths", geoTiffFiles.size());
         }
         return geoTiffFiles;
     }
 
-    public final String[] buildGdalCommand(List<String> geoTiffFiles) {
+    private void merge() {
+
+        // Step 0: Skip merging if file already exists
+        if (Utils.isFilePresent(Utils.MSPLANETARY_MERGED_FILE_PATH)) {
+            logger.info("[04] Merged GeoTIFF files");
+            return;
+        }
+
+        // Step 1: Fetch GeoTIFF files
+        List<String> geoTiffFiles = fetchGeoTiffPaths();
+
+        // Step 2: Build GDAL command
+        String[] command = buildGdalCommand(geoTiffFiles);
+
+        // Step 3: Run the command
+        Utils.runArrayCommand(command, "", "Failed to merge GeoTIFF files");
+
+        logger.info("[04] Merged GeoTIFF files");
+    }
+
+    private String[] buildGdalCommand(List<String> geoTiffFiles) {
         String[] command = new String[geoTiffFiles.size() + 3];
 
         command[0] = "gdal_merge.py";
         command[1] = "-o";
-        command[2] = Utils.MERGE_OUTPUT_DIR;
+        command[2] = Utils.MSPLANETARY_MERGED_FILE_PATH;
         for (int i = 0; i < geoTiffFiles.size(); i++) {
-            logger.info("{} added to the merge", geoTiffFiles.get(i));
             command[i + 3] = geoTiffFiles.get(i);
         }
 
         return command;
     }
 
-    private void cleanupIntermediateFiles(String... files) {
-        for (String file : files) {
+    // Step 3
+    private void generateTiles() {
+
+        // Step 0: Skip generating tiles if files already exist
+        if (Utils.isFilePresent(Utils.MSPLANETARY_REPROJECTED_FILE_PATH)
+                && Utils.isFilePresent(Utils.MSPLANETARY_BYTE_FILE_PATH)
+                && Utils.isFilePresent(Utils.MSPLANETARY_TILE_DIR_PATH)) {
+            logger.info("[05] Generated tiles");
+            return;
+        }
+
+
+        // Step 1: Calculate the maximum zoom level
+        int maxZoom = calculateMaxZoom(294); // Limit to approximately 294 tiles
+
+        // Step 2: Reproject to EPSG:3857
+        String[] warpCommand = {
+                "gdalwarp",
+                "-t_srs", "EPSG:3857",
+                Utils.MSPLANETARY_MERGED_FILE_PATH,
+                Utils.MSPLANETARY_REPROJECTED_FILE_PATH
+        };
+        Utils.runArrayCommand(warpCommand, "Successfully reprojected merged GeoTIFF to EPSG:3857",
+                "Failed to reproject merged GeoTIFF to EPSG:3857");
+
+        // Step 3: Convert to 8-bit Byte format
+        String[] translateCommand = {
+                "gdal_translate",
+                "-of", "VRT",
+                "-ot", "Byte",
+                "-scale",
+                Utils.MSPLANETARY_REPROJECTED_FILE_PATH,
+                Utils.MSPLANETARY_BYTE_FILE_PATH
+        };
+        Utils.runArrayCommand(translateCommand, "Successfully converted merged GeoTIFF to 8-Bit Byte format",
+                "Failed to convert merged GeoTIFF to 8-bit Byte format");
+
+        // Step 4: Generate tiles with calculated zoom levels
+        String[] tileCommand = {
+                "gdal2tiles.py",
+                "--processes=3",
+                "-z", "0-" + maxZoom,
+                "-p", "mercator",
+                Utils.MSPLANETARY_BYTE_FILE_PATH,
+                Utils.MSPLANETARY_TILE_DIR_PATH
+        };
+        Utils.runArrayCommand(tileCommand, "Successfully generated tiles from merged GeoTIFF",
+                "Failed to generate tiles from merged GeoTIFF");
+
+        logger.info("[05] Generated tiles at zoom levels 0 to {}", maxZoom);
+    }
+
+    // Step 4
+    private void cleanupIntermediateFiles() {
+        Utils.deleteDirectory(Utils.MSPLANETARY_TIFF_DIR_PATH);
+        Utils.deleteFiles(new String[] { Utils.MSPLANETARY_MERGED_FILE_PATH, Utils.MSPLANETARY_REPROJECTED_FILE_PATH,
+                Utils.MSPLANETARY_BYTE_FILE_PATH });
+    }
+
+    // Helper methods
+    private String extractSASToken(String geoTiffUrl) {
+        // Only extract a new SAS token if the current one is empty or has expired
+        if (sasToken == null || sasToken.isEmpty() || System.currentTimeMillis() - lastTokenRefreshTime >= 3600000) {
+
+            ObjectMapper objectMapper = new ObjectMapper();
+
+            lastTokenRefreshTime = System.currentTimeMillis();
+            String signedGeoTiffLink = "";
+            String signRequestUrl = Utils.MSPLANETARY_SIGN_URL + "?href=" + geoTiffUrl;
+
             try {
-                Files.deleteIfExists(Paths.get(file));
-            } catch (IOException e) {
-                logger.error("Failed to delete intermediate file: {}", file);
+                ResponseEntity<String> signResponse = restTemplate.getForEntity(signRequestUrl, String.class);
+                JsonNode rootNode = objectMapper.readTree(signResponse.getBody());
+                signedGeoTiffLink = rootNode.get("href").asText();
+
+                // Extract SAS token from the signed URL
+                sasToken = signedGeoTiffLink.split("\\?")[1];
+
+            } catch (Exception e) {
+                sasToken = null; // Reset SAS token to ensure reattempt later
             }
         }
+        return sasToken;
     }
+
+    private List<String> appendSASTokenToLinks(List<String> links) {
+        List<String> signedLinks = new ArrayList<>();
+        String currentToken = extractSASToken(links.get(0));
+        for (String link : links) {
+            if (currentToken != null && !currentToken.isEmpty()) {
+                signedLinks.add(link + "?" + currentToken);
+            }
+        }
+
+        return signedLinks;
+    }
+
+    private String extractFileName(String link) {
+        String noQuery = link.substring(0, link.indexOf('?'));
+        return noQuery.substring(noQuery.lastIndexOf("/") + 1);
+    }
+
+    /**
+     * Calculate the maximum zoom level to limit the number of tiles.
+     * 
+     * @param maxTiles Maximum number of tiles
+     * @return Maximum zoom level
+     */
+    private int calculateMaxZoom(int maxTiles) {
+        int zoom = 0;
+        while (Math.pow(2, 2.0 * zoom) <= maxTiles) {
+            zoom++;
+        }
+        return zoom - 1; // Return the previous zoom level where the tile count is below the limit
+    }
+
 }

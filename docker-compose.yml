@@ -43,8 +43,6 @@ services:
 #    depends_on:
 #      staccato:
 #        condition: service_healthy
-    environment:
-      - PLANET_API_KEY=y #TODO: Add API key here
     ports:
       - "8080:8080" # External port 8080 for the microservice
     networks:
