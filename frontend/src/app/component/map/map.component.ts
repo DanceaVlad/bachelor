@@ -1,21 +1,14 @@
-import { Component, OnInit, signal, effect } from '@angular/core';
-import GeoJSON from 'ol/format/GeoJSON';
-import TileLayer from 'ol/layer/Tile';
+import { Component, OnInit } from '@angular/core';
 import Map from 'ol/Map';
-import { fromLonLat, transformExtent } from 'ol/proj';
-import OSM from 'ol/source/OSM';
 import View from 'ol/View';
-import VectorLayer from 'ol/layer/Vector';
-import VectorSource from 'ol/source/Vector';
-import { NdviService } from '../../service/ndvi.service';
-import { defaults as defaultControls } from 'ol/control';
-import ImageLayer from 'ol/layer/Image';
-import ImageStatic from 'ol/source/ImageStatic';
-import JSZip from 'jszip';
-import proj4 from 'proj4';
-import { register } from 'ol/proj/proj4';
-import GeoTIFF from 'ol/source/GeoTIFF';
-import WebGLTileLayer from 'ol/layer/WebGLTile';
+import TileLayer from 'ol/layer/Tile';
+import XYZ from 'ol/source/XYZ';
+import { fromLonLat } from 'ol/proj';
+import MousePosition from 'ol/control/MousePosition';
+import * as control from 'ol/control';
+import LayerGroup from 'ol/layer/Group';
+import LayerSwitcher from 'ol-layerswitcher';
+import 'ol-layerswitcher/dist/ol-layerswitcher.css';
 
 @Component({
     selector: 'app-map',
@@ -27,198 +20,69 @@ import WebGLTileLayer from 'ol/layer/WebGLTile';
 export class MapComponent implements OnInit {
     map!: Map;
 
-    showNdviLayer = signal(false);
-    boundingBox = signal([0, 0, 0, 0]);
-    viewableCoordinates = signal([0, 0, 0, 0]);
-
-    constructor(private readonly ndviService: NdviService) {
-        // Define the custom Sinusoidal projection based on metadata
-        proj4.defs(
-            "CUSTOM_SIN",
-            "+proj=sinu +lon_0=0 +x_0=0 +y_0=0 +datum=WGS84 +units=m +no_defs"
-        );
-        register(proj4);
-
-        effect(() => {
-            if (this.showNdviLayer()) {
-                this.fetchAndDisplayNdviData();
-            } else {
-                this.deleteNdviLayer();
-            }
-        });
-    }
+    constructor() {}
 
     ngOnInit(): void {
-        // Initialize base map
+        this.initializeMap();
+    }
+
+    initializeMap() {
+        const mousePositionControl = new MousePosition({
+            className: 'custom-mouse-position',
+            target: document.getElementById('mouse-position') || undefined,
+        });
+
         const baseLayer = new TileLayer({
-            source: new OSM(),
+            source: new XYZ({
+                url: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+            }),
         });
-        baseLayer.set('name', 'Base Layer');
+        baseLayer.set('title', 'OpenStreetMap');
+        baseLayer.set('type', 'base'); // Mark as base layer
 
-        const londonCenterInSin = proj4("EPSG:4326", "CUSTOM_SIN", [-0.12755, 51.507222]);
-
-        const view = new View({
-            center: londonCenterInSin,
-            zoom: 5,
-            projection: "CUSTOM_SIN",
+        const msplanetaryLayer = new TileLayer({
+            opacity: 1.0,
+            source: new XYZ({
+                url: 'http://localhost:8080/msplanetary/tiles/{z}/{x}/{-y}.png',
+                tileSize: 256,
+            }),
         });
-        view.set('name', 'London');
+        msplanetaryLayer.set('title', 'MsPlanetary');
+
+        const planetLayer = new TileLayer({
+            opacity: 1.0,
+            source: new XYZ({
+                url: 'https://tiles.planet.com/basemaps/v1/planet-tiles/global_monthly_2016_04_mosaic/gmap/{z}/{x}/{y}.png?api_key=PLAK380f55a7c89f4c4aa9753286349bf874',
+                tileSize: 256,
+            }),
+        });
+        planetLayer.set('title', 'Planet.com');
+
+        const baseLayers = new LayerGroup({
+            layers: [baseLayer],
+        });
+
+        const overlayLayers = new LayerGroup({
+            layers: [msplanetaryLayer, planetLayer],
+        });
+        overlayLayers.set('title', 'Overlays');
 
         this.map = new Map({
+            controls: control.defaults().extend([mousePositionControl]),
             target: 'map',
-            layers: [baseLayer],
-            view: view,
-            controls: defaultControls({ attribution: false }),
+            layers: [baseLayers, overlayLayers],
+            view: new View({
+                center: fromLonLat([103.83123, 1.47233]),
+                zoom: 2,
+            }),
         });
 
-        // Add an event listener for the mouseup event
-        this.map.on('singleclick', () => {
-            this.handleMouseUp();
+        const layerSwitcher = new LayerSwitcher({
+            activationMode: 'click',
+            groupSelectStyle: 'group',
+            startActive: true,
         });
 
-        // Optional: Update bounding box if needed
-        this.map.on('moveend', () => {
-            this.updateBoundingBox();
-        });
-    }
-
-    private fetchAndDisplayNdviData(): void {
-        const view = new View({
-            projection: "CUSTOM_SIN",
-            center: this.map.getView().getCenter(), // Center based on current view
-            zoom: this.map.getView().getZoom(), // Zoom based on current view
-        });
-
-        this.map.setView(view);
-
-        this.ndviService.getNdviFiles(this.boundingBox()).subscribe(async (zipBlob) => {
-            const zip = new JSZip();
-            const zipContent = await zip.loadAsync(zipBlob);
-
-            // Iterate over all files in the ZIP archive
-            for (const fileName of Object.keys(zipContent.files)) {
-                if (fileName.endsWith('.tif')) {
-                    try {
-                        const fileBlob = await zipContent.files[fileName].async('blob');
-                        const tiffUrl = URL.createObjectURL(fileBlob);
-
-                        const geoTiffSource = new GeoTIFF({
-                            sources: [
-                                {
-                                    url: tiffUrl,
-                                    min: -2000, // Set min value based on NDVI valid range
-                                    max: 10000, // Set max value based on NDVI valid range
-                                    nodata: -3000, // Handle NoData value
-                                },
-                            ],
-                        });
-
-                        const tiffLayer = new WebGLTileLayer({
-                            source: geoTiffSource,
-                        });
-
-                        // Use the file name to identify the layer
-                        tiffLayer.set('name', `NDVI Layer: ${fileName}`);
-                        tiffLayer.set('bounds', await geoTiffSource.getView().then(view => view.extent)); // Store the layer's bounds
-
-                        this.map.addLayer(tiffLayer);
-
-                    } catch (error) {
-                        console.error(`Error processing file ${fileName}:`, error);
-                    }
-                }
-            }
-
-            // Check and remove layers outside the view
-            this.removeLayersOutsideView();
-        });
-    }
-
-    private removeLayersOutsideView(): void {
-        const currentExtent = this.map.getView().calculateExtent();
-
-        this.map.getLayers().forEach(layer => {
-            if (layer?.get('name')?.startsWith('NDVI Layer')) {
-                const layerBounds = layer.get('bounds');
-                if (layerBounds && !this.extentIntersects(currentExtent, layerBounds)) {
-                    this.map.removeLayer(layer); // Remove layer if it's outside the current view
-                }
-            }
-        });
-    }
-
-    private extentIntersects(extent1: number[], extent2: number[]): boolean {
-        return !(
-            extent1[0] > extent2[2] || // extent1 is completely to the right of extent2
-            extent1[2] < extent2[0] || // extent1 is completely to the left of extent2
-            extent1[1] > extent2[3] || // extent1 is completely above extent2
-            extent1[3] < extent2[1]    // extent1 is completely below extent2
-        );
-    }
-
-    private fetchAndDisplayNdviResponse(): void {
-        this.ndviService.getNdviResponse(this.boundingBox()).subscribe(
-            (data: any) => {
-                const vectorLayer = new VectorLayer({
-                    source: new VectorSource({
-                        features: new GeoJSON().readFeatures(data, {
-                            dataProjection: 'EPSG:4326', // WGS84 for MODIS data
-                            featureProjection: 'EPSG:3857', // Map display projection
-                        }),
-                    }),
-                });
-                vectorLayer.set('name', 'NDVI Layer');
-                this.map.addLayer(vectorLayer);
-            }
-        );
-    }
-
-    private deleteNdviLayer(): void {
-        this.map.getLayers().forEach(layer => {
-            if (layer.get('name').contains('NDVI Layer')) {
-                this.map.removeLayer(layer);
-            }
-        });
-    }
-
-    private handleMouseUp(): void {
-        // Check if the bounding box or view extent has changed before fetching data
-        const extentAbsolute = this.map.getView().calculateExtent();
-        const transformedExtent = transformExtent(extentAbsolute, 'EPSG:3857', 'EPSG:4326');
-
-        if (this.validateExtent(transformedExtent)) {
-            this.boundingBox.set(transformedExtent);
-            this.fetchAndDisplayNdviData();
-        }
-    }
-
-    private updateBoundingBox(): void {
-        const extentAbsolute = this.map.getView().calculateExtent();
-
-        // Transform to EPSG:4326 for display and API usage
-        const transformedExtent = transformExtent(extentAbsolute, 'EPSG:3857', 'EPSG:4326');
-
-        if (this.validateExtent(transformedExtent)) {
-            this.boundingBox.set(transformedExtent);
-
-            // Truncate for viewableCoordinates display
-            this.viewableCoordinates.set(
-                transformedExtent.map(coord => parseFloat(coord.toFixed(2)))
-            );
-        } else {
-            console.error('Invalid bounding box extent:', transformedExtent);
-        }
-    }
-
-    onToggleNdvi(): void {
-        this.showNdviLayer.update(value => !value);
-    }
-
-    private validateExtent(extent: number[]): boolean {
-        return extent.length === 4 &&
-            extent[0] >= -180 &&
-            extent[1] >= -90 &&
-            extent[2] <= 180 &&
-            extent[3] <= 90;
+        this.map.addControl(layerSwitcher);
     }
 }

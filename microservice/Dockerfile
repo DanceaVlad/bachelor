@@ -7,7 +7,13 @@ WORKDIR $APP_HOME
 # Copy the project files into the container
 COPY . $APP_HOME
 
-RUN apt-get update && apt-get install -y curl
+RUN apt-get update && apt-get install -y \
+    curl \
+    gdal-bin \
+    python3-gdal \
+    python3-pip \
+    libgdal-dev \
+    && apt-get clean
 
 # Ensure Maven wrapper is executable
 RUN chmod +x $APP_HOME/mvnw

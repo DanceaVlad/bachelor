@@ -17,7 +17,7 @@ Desktop.ini                    # Windows system file
 docker-compose.override.yml    # Local overrides for Compose
 docker/                        # Any temporary Docker directories
 
-# Staccato-Specific Ignores
+# Staccato-Specific
 staccato/.apt_generated
 staccato/.springBeans
 staccato/.sts4-cache
@@ -80,4 +80,14 @@ frontend/src/assets/collections.json
 
 # Microservice Specific
 microservice/src/main/resources/temp/
+microservice/src/main/resources/tiffs/
+microservice/src/main/resources/merged.tif
+microservice/src/main/resources/tiles/
+microservice/src/main/resources/reprojected.tif
+microservice/src/main/resources/byte.vrt
+microservice/src/main/resources/planet
 
+staccato/.DS_Store
+.vscode/settings.json
+.vscode/launch.json
+staccato/.DS_Store
