@@ -20,18 +20,39 @@ public class PlanetUtils {
     public static final String PLANET_PROVIDER_URI_PATH = "/planet";
     public static final String PLANET_PROVIDER_API_KEY = "PLAK380f55a7c89f4c4aa9753286349bf874";
     public static final String PLANET_API_URL = "https://api.planet.com/data/v1/quick-search";
-    public static final String PLANET_FILE_PATH = "microservice/src/main/resources/planet/";
-    public static final String PLANET_GEOTIFF_FILE_PATH = PLANET_FILE_PATH + "geotiffs/";
-    public static final String PLANET_GEOTIFF_COMPRESSED_FILE_PATH = PLANET_FILE_PATH + "geotiffs-compressed/";
-    public static final String PLANET_GEOTIFF_SPLIT_FILE_PATH = PLANET_FILE_PATH + "geotiffs-split/";
-    public static final String PLANET_GEOTIFF_MERGED_FILE_PATH = PLANET_FILE_PATH + "merged.tif";
+    public static final String PLANET_DIR_PATH = "microservice/src/main/resources/planet/";
 
-    public static final String PLANET_QUICKSEARCH_FILE_PATH = PLANET_FILE_PATH + "quicksearch.json";
-    public static final String PLANET_QUICKSEARCH_ASSETS_FILE_PATH = PLANET_FILE_PATH + "quicksearch-assets.txt";
-    public static final String PLANET_GEOTIFF_LINKS_FILE_PATH = PLANET_FILE_PATH + "geotiff-links.txt";
-    public static final String PLANET_ACTIVATE_FILE_PATH = PLANET_FILE_PATH + "activate/";
+    public static final String PLANET_GEOTIFF_DIR_PATH = PLANET_DIR_PATH + "geotiffs/";
+    public static final String PLANET_GEOTIFF_REPROJECTED_DIR_PATH = PLANET_DIR_PATH + "geotiffs-reprojected/";
+    public static final String PLANET_GEOTIFF_COMPRESSED_DIR_PATH = PLANET_DIR_PATH + "geotiffs-compressed/";
+    public static final String PLANET_GEOTIFF_SPLIT_DIR_PATH = PLANET_DIR_PATH + "geotiffs-split/";
+    public static final String PLANET_GEOTIFF_NAMES_FILE_PATH = PLANET_DIR_PATH + "geotiffs-names.txt";
+
+    public static final String PLANET_GEOTIFF_MERGED_FILE_PATH = PLANET_DIR_PATH + "merged.tif";
+    public static final String PLANET_VRT_FILE_PATH = PLANET_DIR_PATH + "merged.vrt";
+
+    public static final String PLANET_QUICKSEARCH_FILE_PATH = PLANET_DIR_PATH + "quicksearch.json";
+    public static final String PLANET_QUICKSEARCH_ASSETS_FILE_PATH = PLANET_DIR_PATH + "quicksearch-assets.txt";
+    public static final String PLANET_GEOTIFF_LINKS_FILE_PATH = PLANET_DIR_PATH + "geotiff-links.txt";
+    public static final String PLANET_ACTIVATE_FILE_DIR = PLANET_DIR_PATH + "activate/";
 
     private static final Logger logger = LoggerFactory.getLogger(PlanetUtils.class);
+
+    public static final void runCommand(String command, String successMessage, String errorMessage) {
+        try {
+            Process process = new ProcessBuilder(command).inheritIO().start();
+            if (process.waitFor() == 0) {
+                logger.info("{}", successMessage);
+            } else {
+                logger.error("{}", errorMessage);
+            }
+        } catch (IOException e) {
+            logger.error("Error running command", e);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            logger.error("Error running command", e);
+        }
+    }
 
     public static final void runSingleGdalCommand(String[] command, String successMessage, String errorMessage) {
         try {

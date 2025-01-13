@@ -12,6 +12,7 @@ import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.HashMap;
 
 import org.slf4j.Logger;
@@ -48,7 +49,7 @@ public class PlanetService {
         PlanetUtils.writeArrayToFile(PlanetUtils.PLANET_QUICKSEARCH_ASSETS_FILE_PATH, assetsLinks);
 
         // Step 2: Activate the assets if needed
-        // activateAssets(assetsLinks);
+        activateAssets(assetsLinks);
 
         // Step 3: Fetch GeoTIFF links from assets
         List<String> geoTiffLinks = fetchGeoTiffLinks(assetsLinks);
@@ -59,116 +60,238 @@ public class PlanetService {
         downloadGeoTiffs(geoTiffLinks);
     }
 
-    /**
+    /*
      * 
      * Divide all GeoTIFF files in the directory.
+     * 
+     * public void divideGeoTiffs() {
+     * // Step 1: Fetch all GeoTIFF files
+     * List<String> geoTiffFiles =
+     * PlanetUtils.fetchFilePathsInDirectory(PlanetUtils.PLANET_GEOTIFF_DIR_PATH,
+     * "tif");
+     * 
+     * // Step 2: Build GDAL Commands
+     * String[] commands = gdalRetile(geoTiffFiles);
+     * 
+     * // Step 3: Execute commands using a thread pool
+     * ExecutorService executor = Executors.newFixedThreadPool(5); // 5 threads for
+     * parallel execution
+     * 
+     * List<Future<?>> futures = new ArrayList<>();
+     * for (String command : commands) {
+     * futures.add(executor.submit(() -> {
+     * try {
+     * Process process = Runtime.getRuntime().exec(command);
+     * int exitCode = process.waitFor();
+     * if (exitCode == 0) {
+     * logger.info("Command executed successfully: {}", command);
+     * } else {
+     * logger.error("Command failed with exit code {}: {}", exitCode, command);
+     * }
+     * } catch (Exception e) {
+     * logger.error("Failed to execute command: {}", e.getMessage());
+     * }
+     * }));
+     * }
+     * 
+     * // Wait for all tasks to complete
+     * for (Future<?> future : futures) {
+     * try {
+     * future.get(); // Wait for each task to complete
+     * } catch (Exception e) {
+     * logger.error("Error waiting for command execution: {}", e.getMessage());
+     * }
+     * }
+     * 
+     * executor.shutdown(); // Shutdown the thread pool
+     * logger.info("All GeoTIFF files divided successfully.");
+     * }
      */
-    public void divideGeoTiffs() {
-        // Step 1: Fetch all GeoTIFF files
-        List<String> geoTiffFiles = PlanetUtils.fetchFilePathsInDirectory(PlanetUtils.PLANET_GEOTIFF_FILE_PATH, "tif");
 
-        // Step 2: Build GDAL Commands
-        String[] commands = gdalRetile(geoTiffFiles);
+    /*
+     * Merge all GeoTIFF files in the directory.
+     * 
+     * public void mergeGeoTiffs() {
+     * // Step 1: Fetch all GeoTIFF files
+     * List<String> geoTiffFiles =
+     * PlanetUtils.fetchFilePathsInDirectory(PlanetUtils.
+     * PLANET_GEOTIFF_SPLIT_DIR_PATH,
+     * "tif");
+     * 
+     * // Step 2: Build GDAL Command
+     * String[] command = gdalMerge(geoTiffFiles);
+     * 
+     * // Step 3: Execute the command
+     * PlanetUtils.runSingleGdalCommand(command, "Successfully merged GeoTIFF
+     * files",
+     * "Failed to merge GeoTIFF files");
+     * 
+     * }
+     */
 
-        // Step 3: Execute commands using a thread pool
-        ExecutorService executor = Executors.newFixedThreadPool(5); // 5 threads for parallel execution
+    public void work() {
+        //gdalReproject();
+        gdalBuildVRT();
+    }
 
-        List<Future<?>> futures = new ArrayList<>();
-        for (String command : commands) {
-            futures.add(executor.submit(() -> {
+    private void gdalReproject() {
+
+        logger.info("Reprojecting GeoTIFF files to Web Mercator...");
+
+        List<String> files = PlanetUtils.fetchFilePathsInDirectory(PlanetUtils.PLANET_GEOTIFF_DIR_PATH,
+                "tif");
+
+        // Create output directory if it does not exist
+        Path outputDir = Paths.get(PlanetUtils.PLANET_GEOTIFF_REPROJECTED_DIR_PATH);
+        if (!Files.exists(outputDir)) {
+            try {
+                Files.createDirectories(outputDir);
+            } catch (Exception e) {
+                logger.error("Failed to create output directory: {}", e.getMessage());
+                return;
+            }
+        }
+
+        ExecutorService executor = Executors.newFixedThreadPool(5);
+        AtomicInteger counter = new AtomicInteger(1);
+
+        for (String file : files) {
+            executor.submit(() -> {
+                String outputFile = Paths.get(outputDir.toString(), Paths.get(file).getFileName().toString())
+                        .toString();
+                String command = String.format(
+                        "gdalwarp -t_srs EPSG:3857 -dstnodata 0 -multi -r bilinear -wo NUM_THREADS=ALL_CPUS %s %s",
+                        file, outputFile);
+
                 try {
                     Process process = Runtime.getRuntime().exec(command);
                     int exitCode = process.waitFor();
                     if (exitCode == 0) {
-                        logger.info("Command executed successfully: {}", command);
+                        logger.info("{}: Reprojected successfully", counter.getAndIncrement());
                     } else {
-                        logger.error("Command failed with exit code {}: {}", exitCode, command);
+                        logger.error("Failed to reproject to Web Mercator: {}", file);
                     }
                 } catch (Exception e) {
-                    logger.error("Failed to execute command: {}", e.getMessage());
+                    logger.error("Error reprojecting file to Web Mercator: {}", e.getMessage());
                 }
-            }));
+            });
         }
 
-        // Wait for all tasks to complete
-        for (Future<?> future : futures) {
+        executor.shutdown();
+        while (!executor.isTerminated()) {
             try {
-                future.get(); // Wait for each task to complete
-            } catch (Exception e) {
-                logger.error("Error waiting for command execution: {}", e.getMessage());
+                Thread.sleep(100);
+            } catch (InterruptedException e) {
+                logger.error("Error waiting for executor to terminate: {}", e.getMessage());
             }
         }
 
-        executor.shutdown(); // Shutdown the thread pool
-        logger.info("All GeoTIFF files divided successfully.");
+        logger.info("All files reprojected successfully.");
     }
 
-    /**
-     * Merge all GeoTIFF files in the directory.
-     */
-    public void mergeGeoTiffs() {
-        // Step 1: Fetch all GeoTIFF files
-        List<String> geoTiffFiles = PlanetUtils.fetchFilePathsInDirectory(PlanetUtils.PLANET_GEOTIFF_SPLIT_FILE_PATH,
+    private void gdalBuildVRT() {
+        List<String> files = PlanetUtils.fetchFilePathsInDirectory(PlanetUtils.PLANET_GEOTIFF_REPROJECTED_DIR_PATH,
                 "tif");
 
-        // Step 2: Build GDAL Command
-        String[] command = gdalMerge(geoTiffFiles);
-
-        // Step 3: Execute the command
-        PlanetUtils.runSingleGdalCommand(command, "Successfully merged GeoTIFF files",
-                "Failed to merge GeoTIFF files");
-
-    }
-
-    private String[] gdalMerge(List<String> geoTiffFiles) {
-        String[] command = new String[geoTiffFiles.size() + 3];
-
-        command[0] = "gdal_merge.py";
-        command[1] = "-o";
-        command[2] = PlanetUtils.PLANET_GEOTIFF_MERGED_FILE_PATH;
-        for (int i = 0; i < geoTiffFiles.size(); i++) {
-            logger.info("{} added to the merge", geoTiffFiles.get(i));
-            command[i + 3] = geoTiffFiles.get(i);
+        StringBuilder fileNames = new StringBuilder();
+        for (String file : files) {
+            fileNames.append(file).append("\n");
         }
 
-        return command;
-    }
-
-    private String[] gdalRetile(List<String> geoTiffFiles) {
-        // Commands for splitting the GeoTIFF filess
-        List<String> commands = new ArrayList<>();
-
-        for (String geoTiffFile : geoTiffFiles) {
-
-            // Create the command for gdal_retile.py
-            String command = String.format(
-                    "gdal_retile.py -targetDir %s -ps 2048 2048 -co COMPRESS=DEFLATE -co TILED=YES -co BIGTIFF=YES %s",
-                    PlanetUtils.PLANET_GEOTIFF_SPLIT_FILE_PATH, geoTiffFile);
-
-            commands.add(command);
+        try {
+            Files.write(Paths.get(PlanetUtils.PLANET_GEOTIFF_NAMES_FILE_PATH), fileNames.toString().getBytes());
+        } catch (Exception e) {
+            logger.error("Failed to write file names to file: {}", e.getMessage());
         }
 
-        return commands.toArray(new String[0]);
-    }
+        Path absolutePathNames = Paths.get(PlanetUtils.PLANET_GEOTIFF_NAMES_FILE_PATH).toAbsolutePath();
+        Path absolutePathVrt = Paths.get(PlanetUtils.PLANET_VRT_FILE_PATH).toAbsolutePath();
 
-    private String[] buildCompressionGdalCommands(List<String> geoTiffFiles) {
-        // Commands for splitting the GeoTIFF files
-        List<String> commands = new ArrayList<>();
+        // Build the command
+        List<String> command = new ArrayList<>();
+        command.add("gdalbuildvrt");
+        command.add("-input_file_list");
+        command.add(absolutePathNames.toString());
+        command.add(absolutePathVrt.toString());
 
-        for (String geoTiffFile : geoTiffFiles) {
-            // Define the output directory for the split files
-            String outputDir = geoTiffFile.replace("/geotiffs", "/geotiffs-split");
+        // Execute the command
 
-            // Create the command for gdal_retile.py
-            String command = String.format(
-                    "gdal_retile.py -targetDir %s -ps 512 512 -co COMPRESS=JPEG -co TILED=YES -co BIGTIFF=YES %s",
-                    outputDir, geoTiffFile);
+        try {
 
-            commands.add(command);
+            ProcessBuilder processBuilder = new ProcessBuilder(command);
+            processBuilder.inheritIO();
+            Process process = processBuilder.start();
+            int exitCode = process.waitFor();
+
+            if (exitCode == 0) {
+                logger.info("Successfully built VRT file: {}", absolutePathVrt);
+            } else {
+                logger.error("Failed to build VRT file with exit code {}", exitCode);
+            }
+
+        } catch (Exception e) {
+            logger.error("Error in gdalBuildVRT: {}", e.getMessage());
         }
 
-        return commands.toArray(new String[0]);
     }
+
+    /*
+     * private String[] gdalMerge(List<String> geoTiffFiles) {
+     * String[] command = new String[geoTiffFiles.size() + 3];
+     * 
+     * command[0] = "gdal_merge.py";
+     * command[1] = "-o";
+     * command[2] = PlanetUtils.PLANET_GEOTIFF_MERGED_FILE_PATH;
+     * for (int i = 0; i < geoTiffFiles.size(); i++) {
+     * logger.info("{} added to the merge", geoTiffFiles.get(i));
+     * command[i + 3] = geoTiffFiles.get(i);
+     * }
+     * 
+     * return command;
+     * }
+     */
+
+    /*
+     * private String[] gdalRetile(List<String> geoTiffFiles) {
+     * // Commands for splitting the GeoTIFF filess
+     * List<String> commands = new ArrayList<>();
+     * 
+     * for (String geoTiffFile : geoTiffFiles) {
+     * 
+     * // Create the command for gdal_retile.py
+     * String command = String.format(
+     * "gdal_retile.py -targetDir %s -ps 2048 2048 -co COMPRESS=DEFLATE -co TILED=YES -co BIGTIFF=YES %s"
+     * ,
+     * PlanetUtils.PLANET_GEOTIFF_SPLIT_DIR_PATH, geoTiffFile);
+     * 
+     * commands.add(command);
+     * }
+     * 
+     * return commands.toArray(new String[0]);
+     * }
+     */
+
+    /*
+     * private String[] buildCompressionGdalCommands(List<String> geoTiffFiles) {
+     * // Commands for splitting the GeoTIFF files
+     * List<String> commands = new ArrayList<>();
+     * 
+     * for (String geoTiffFile : geoTiffFiles) {
+     * // Define the output directory for the split files
+     * String outputDir = geoTiffFile.replace("/geotiffs", "/geotiffs-split");
+     * 
+     * // Create the command for gdal_retile.py
+     * String command = String.format(
+     * "gdal_retile.py -targetDir %s -ps 512 512 -co COMPRESS=JPEG -co TILED=YES -co BIGTIFF=YES %s"
+     * ,
+     * outputDir, geoTiffFile);
+     * 
+     * commands.add(command);
+     * }
+     * 
+     * return commands.toArray(new String[0]);
+     * }
+     */
 
     private List<String> fetchGeoTiffLinks(List<String> assetLinks) {
 
@@ -278,7 +401,6 @@ public class PlanetService {
 
         logger.info("Activating assets...");
 
-        Map<String, String> downloadLinks = new HashMap<>();
         ObjectMapper mapper = new ObjectMapper();
 
         Map<String, Integer> assets = new HashMap<>();
@@ -286,54 +408,80 @@ public class PlanetService {
         assets.put("activating", 0);
         assets.put("active", 0);
 
+        // List to hold all threads
+        List<Thread> threads = new ArrayList<>();
+
         for (String assetUrl : assetsLinks) {
-            try {
-                // Create the request
-                HttpEntity<String> assetRequest = new HttpEntity<>(PlanetUtils.getHttpHeaders());
-
-                // Send GET request to fetch the asset
-                String response = restTemplate.exchange(assetUrl, HttpMethod.GET, assetRequest, String.class)
-                        .getBody();
-
-                // Parse the response
-                JsonNode rootNode = mapper.readTree(response);
-                JsonNode asset = rootNode.get("ortho_analytic_4b_sr");
-
-                boolean isInactive = asset != null && asset.has("status")
-                        && asset.get("status").asText().equals("inactive");
-
-                if (isInactive) {
-
-                    // Get the asset activation link
-                    String assetActivationLink = asset.get("_links").get("activate").asText();
-
+            threads.add(new Thread(() -> {
+                try {
                     // Create the request
-                    HttpEntity<String> activationRequest = new HttpEntity<>("{}", PlanetUtils.getHttpHeaders());
+                    HttpEntity<String> assetRequest = new HttpEntity<>(PlanetUtils.getHttpHeaders());
 
-                    // Send POST request to activate the asset
-                    restTemplate
-                            .exchange(assetActivationLink, HttpMethod.POST, activationRequest, String.class)
+                    // Send GET request to fetch the asset
+                    String response = restTemplate.exchange(assetUrl, HttpMethod.GET, assetRequest, String.class)
                             .getBody();
 
-                    assets.put("inactive", assets.get("inactive") + 1);
-                }
+                    // Parse the response
+                    JsonNode rootNode = mapper.readTree(response);
+                    JsonNode asset = rootNode.get("ortho_analytic_4b_sr");
 
-                boolean isActivating = asset != null && asset.has("status")
-                        && asset.get("status").asText().equals("activating");
-                if (isActivating) {
-                    assets.put("activating", assets.get("activating") + 1);
-                }
+                    boolean isInactive = asset != null && asset.has("status")
+                            && asset.get("status").asText().equals("inactive");
 
-                boolean isActive = asset != null && asset.has("status")
-                        && asset.get("status").asText().equals("active");
-                if (isActive) {
-                    assets.put("active", assets.get("active") + 1);
-                }
+                    if (isInactive) {
 
-            } catch (Exception e) {
-                logger.error("Failed to activate asset: {}", e.getMessage());
+                        // Get the asset activation link
+                        String assetActivationLink = asset.get("_links").get("activate").asText();
+
+                        // Create the request
+                        HttpEntity<String> activationRequest = new HttpEntity<>("{}", PlanetUtils.getHttpHeaders());
+
+                        // Send POST request to activate the asset
+                        restTemplate
+                                .exchange(assetActivationLink, HttpMethod.POST, activationRequest, String.class)
+                                .getBody();
+
+                        assets.put("inactive", assets.get("inactive") + 1);
+                    }
+
+                    boolean isActivating = asset != null && asset.has("status")
+                            && asset.get("status").asText().equals("activating");
+                    if (isActivating) {
+                        assets.put("activating", assets.get("activating") + 1);
+                    }
+
+                    boolean isActive = asset != null && asset.has("status")
+                            && asset.get("status").asText().equals("active");
+                    if (isActive) {
+                        assets.put("active", assets.get("active") + 1);
+                    }
+
+                } catch (Exception e) {
+                    logger.error("Failed to activate asset: {}", e.getMessage());
+                }
+            }));
+        }
+        // Start threads in batches of 5
+        for (int i = 0; i < threads.size(); i++) {
+            threads.get(i).start();
+            if ((i + 1) % 5 == 0) {
+                try {
+                    Thread.sleep(1000);
+                } catch (InterruptedException e) {
+                    logger.error("Thread sleep interrupted: {}", e.getMessage());
+                }
             }
         }
+
+        // Wait for all threads to complete
+        for (Thread thread : threads) {
+            try {
+                thread.join();
+            } catch (InterruptedException e) {
+                logger.error("Thread join interrupted: {}", e.getMessage());
+            }
+        }
+
         logger.info("Inactive assets: {}\nActivating assets: {}\nActive assets: {}",
                 assets.get("inactive"), assets.get("activating"), assets.get("active"));
     }
@@ -357,7 +505,7 @@ public class PlanetService {
         dateRangeFilter.put("field_name", "acquired");
         dateRangeFilter.put("config", Map.of(
                 "gte", "2023-01-01T00:00:00Z",
-                "lte", "2023-12-31T23:59:59Z"));
+                "lte", "2023-01-31T23:59:59Z"));
         config.add(dateRangeFilter);
 
         // Add configuration to filters
@@ -370,6 +518,9 @@ public class PlanetService {
     }
 
     private void downloadGeoTiffs(List<String> geoTiffLinks) {
+
+        logger.info("Downloading GeoTIFF files...");
+
         // List to hold all threads
         List<Thread> threads = new ArrayList<>();
 
@@ -391,13 +542,13 @@ public class PlanetService {
                     }
 
                     // Create directory if not present
-                    Path directoryPath = Paths.get(PlanetUtils.PLANET_GEOTIFF_FILE_PATH);
+                    Path directoryPath = Paths.get(PlanetUtils.PLANET_GEOTIFF_DIR_PATH);
                     if (!Files.exists(directoryPath)) {
                         Files.createDirectories(directoryPath);
                     }
 
                     // Save the file locally
-                    Path filePath = Paths.get(PlanetUtils.PLANET_GEOTIFF_FILE_PATH, fileName);
+                    Path filePath = Paths.get(PlanetUtils.PLANET_GEOTIFF_DIR_PATH, fileName);
                     try (InputStream in = new ByteArrayInputStream(downloadResponse.getBody());
                             OutputStream out = Files.newOutputStream(filePath)) {
                         in.transferTo(out);
