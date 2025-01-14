@@ -1,2 +1,8 @@
-target/
-src/main/resources/
+#Java
+**/target/
+**.class
+
+# Microservice
+src/main/resources/*
+!src/main/resources/application.properties
+

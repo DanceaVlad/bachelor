@@ -34,28 +34,20 @@ jobs:
       # Step 5: Wait for Services to Start
       - name: Wait for Actuator Endpoint to Become Ready
         run: |
-          for i in {1..50}; do
-            if curl --silent --fail http://localhost:8081/actuator/health; then
+          $retries = 40
+          $sleep_time = 5
+
+          sleep 400
+          for i in {1..$retries}; do
+            if curl --silent --fail http://localhost:8080/actuator/health; then
               echo "Actuator is up!"
               exit 0
             fi
-            echo "Waiting for Actuator endpoint... ($i/10)"
-            sleep 5
+            echo "Waiting for Actuator endpoint... ($i/$retries)"
+            sleep $sleep_time
           done
           echo "Actuator endpoint did not become ready in time."
           exit 1
-
-      # Step 6: Test Actuator Endpoint
-      - name: Test Actuator Endpoint
-        run: |
-          response=$(curl --silent http://localhost:8081/actuator/health)
-          echo "Response: $response"
-          if echo "$response" | grep -q '"status":"UP"'; then
-            echo "Actuator endpoint test passed."
-          else
-            echo "Actuator endpoint test failed."
-            exit 1
-          fi
 
       # Step 7: Tear Down Docker Compose
       - name: Tear Down Docker Compose

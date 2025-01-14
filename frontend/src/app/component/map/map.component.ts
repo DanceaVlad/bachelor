@@ -49,21 +49,12 @@ export class MapComponent implements OnInit {
         });
         msplanetaryLayer.set('title', 'MsPlanetary');
 
-        const planetLayer = new TileLayer({
-            opacity: 1.0,
-            source: new XYZ({
-                url: 'https://tiles.planet.com/basemaps/v1/planet-tiles/global_monthly_2016_04_mosaic/gmap/{z}/{x}/{y}.png?api_key=PLAK380f55a7c89f4c4aa9753286349bf874',
-                tileSize: 256,
-            }),
-        });
-        planetLayer.set('title', 'Planet.com');
-
         const baseLayers = new LayerGroup({
             layers: [baseLayer],
         });
 
         const overlayLayers = new LayerGroup({
-            layers: [msplanetaryLayer, planetLayer],
+            layers: [msplanetaryLayer],
         });
         overlayLayers.set('title', 'Overlays');
 
