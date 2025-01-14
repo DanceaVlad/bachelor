@@ -73,9 +73,7 @@ public class Utils {
         for (String filePath : filePaths) {
             File file = new File(filePath);
             if (file.exists()) {
-                if (file.delete()) {
-                    logger.info("Deleted file: {}", filePath);
-                } else {
+                if (!file.delete()) {
                     logger.error("Failed to delete file: {}", filePath);
                 }
             }

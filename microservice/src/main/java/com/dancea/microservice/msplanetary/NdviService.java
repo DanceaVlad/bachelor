@@ -260,7 +260,7 @@ public class NdviService {
                 Utils.MSPLANETARY_MERGED_FILE_PATH,
                 Utils.MSPLANETARY_REPROJECTED_FILE_PATH
         };
-        Utils.runArrayCommand(warpCommand, "Successfully reprojected merged GeoTIFF to EPSG:3857",
+        Utils.runArrayCommand(warpCommand, "",
                 "Failed to reproject merged GeoTIFF to EPSG:3857");
 
         // Step 3: Convert to 8-bit Byte format
@@ -272,7 +272,7 @@ public class NdviService {
                 Utils.MSPLANETARY_REPROJECTED_FILE_PATH,
                 Utils.MSPLANETARY_BYTE_FILE_PATH
         };
-        Utils.runArrayCommand(translateCommand, "Successfully converted merged GeoTIFF to 8-Bit Byte format",
+        Utils.runArrayCommand(translateCommand, "",
                 "Failed to convert merged GeoTIFF to 8-bit Byte format");
 
         // Step 4: Generate tiles with calculated zoom levels
@@ -284,7 +284,7 @@ public class NdviService {
                 Utils.MSPLANETARY_BYTE_FILE_PATH,
                 Utils.MSPLANETARY_TILE_DIR_PATH
         };
-        Utils.runArrayCommand(tileCommand, "Successfully generated tiles from merged GeoTIFF",
+        Utils.runArrayCommand(tileCommand, "",
                 "Failed to generate tiles from merged GeoTIFF");
 
         logger.info("[05] Generated tiles at zoom levels 0 to {}", maxZoom);
